@@ -1,0 +1,16 @@
+clear all;
+close all;
+clc;
+N=10;
+n=-N:0.1:N;
+y=sin(n);
+subplot(2,1,1);
+plot(n,y);
+ylabel('amplitude');
+xlabel('t (s)');
+title('Sine, continous time');
+subplot(2,1,2);
+stem(n,y);
+ylabel('amplitude');
+xlabel('n (samples)');
+title('Sine, discrete time');
