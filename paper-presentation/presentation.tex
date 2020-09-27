@@ -248,7 +248,24 @@
 \end{frame}
 
 \begin{frame}
-\frametitle{Neural audio synthesis}
+	\frametitle{Machine learning and computational acoustics}
+	\begin{figure}
+	\includegraphics[height=4cm]{./6_5_ml_acoustics.jpg}
+		\caption{Analytic physical models (lower left) give basic insights about physical systems. More sophisticated models, reliant on computational methods (lower right), can model more complex phenomena. Whereas physical models are reliant on rules, which are updated by physical evidence (data), ML is purely data-driven (upper left). By augmenting ML methods with physical models to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained \footfullcite{mlacoustics}}
+	\end{figure}
+\end{frame}
+
+\note{
+	\begin{itemize}
+		\item
+			First two papers i'll discuss, purely neural audio synthesis, are from the top left. Unstructured, whacky, figure out what you can from the provided audio
+		\item
+			Lastly I'll mention an alternative approach, top right -- mixing our known acoustical physical models with machine learning and deep learning to train on real audio and discover optimal parameters
+	\end{itemize}
+}
+
+\begin{frame}
+	\frametitle{Neural audio synthesis}
 	The question of generating musical signals has been extensively studied over the past decades. Most of the previous approaches on this topic were defined in the spectral domain as a complex set of relatively simple manipulation (subtractive, additive or modulation synthesis). However, several recent breakthroughs in audio waveform generative models based on neural networks (Oord, 2016) have obtained astounding results in speech synthesis both qualitatively and quantitatively (Mehri, 2016). These systems rely on learning the structure of audio waveforms directly from a given set of audio files, without computing a spectral transform and in an unsupervised manner.\footfullcite{intro1}
 \end{frame}
 

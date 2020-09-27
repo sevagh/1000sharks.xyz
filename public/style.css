@@ -1,7 +1,16 @@
 body {
   font-family: sans-serif;
   margin: auto;
-  max-width: 1280px;
+  max-width: 800px;
+}
+
+p {
+  max-width: inherit;
+}
+
+pre {
+  max-width: inherit;
+  white-space: pre-wrap;
 }
 
 .navbar {
@@ -21,4 +30,3 @@ body {
 .navbar a:hover {
   color: #ffffff;
 }
-

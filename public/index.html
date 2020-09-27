@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="generator" content="GitLab Pages">
-    <title>Plain HTML site using GitLab Pages</title>
+    <title>1000 sharks - an AI music experience</title>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
@@ -13,11 +13,242 @@
       <a href="https://gitlab.com/pages/">Other Examples</a>
     </div>
 
-    <h1>Hello World!</h1>
+    <h1>1000 sharks</h1>
+    <h3>An AI music experience, prepared by Sevag for MUMT 618</h3>
 
     <p>
-      This is a simple plain-HTML website on GitLab Pages, without any fancy static site generator.
+    Machine learning and deep learning techniques in recent years have an increasing presence in the field of musical acoustics<sup><a href="#ref">[1]</a></sup>. As a preliminary introduction to generating music using neural networks, you can view my <a href="paper_presentation_final.pdf" type="application/pdf" title="Neural audio synthesis">paper presentation</a> introducing WaveNet<sup><a href="#ref">[2]</a></sup>, SampleRNN<sup><a href="#ref">[3]</a></sup>, and other novel approaches to neural audio.
+    <br>
+    <br>
+    In the presentation, I outlined that there exist both unconstrained, unstructured models for generating audio in the waveform domain (resulting in babbling or confusing outputs), and structured physical computational models that have been used in traditional audio synthesis (that don't sound very natural).
+    <br>
+    <br>
+    A mixed approach of using machine and deep learning to estimate physical model parameters trained on real data is a good middle ground. In this project, I'll be using SampleRNN for unstructured neural audio synthesis. I'll also explore the Magenta Differentiable DSP library<sup><a href="#ref">[4]</a></sup> for a hybrid machine learning + physical model approach. From this diagram, I'll be targeting the top left and top right images:
+    <figure>
+    <img src="6_5_ml_acoustics.jpg" width=400px/>
+    <figcaption>By augmenting ML methods (top left) with physical models (bottom right) to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained <sup><a href="#ref">[1]</a></sup></figcaption>
+    </figure>
     </p>
+
+    <h1>Motivation</h1>
+
+    <p>
+    The dadabots<sup><a href="#ref">[5]</a></sup> have been creating music with neural networks, trained on the music of specific artists:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/MwtVkPKx3RA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <br>
+    My initial idea was to see if I could imitate the dadabots by training SampleRNN in a variety of experiments:
+    <ol>
+      <li>Train on a single album and generate music, just to familiarize myself with SampleRNN</li>
+      <li>Two different artists, trained separately, to generate music that sounds like Artist A and Artist B</li>
+      <li>Combined training on both artists, to generate music that sounds like Artist A + Artist B</li>
+      <li>Training on separate instruments to layer the results over each other</li>
+    </ol>
+    To supplement the illusion of a "real" music artist, I also want to generate some album art and fake lyrics using additional AI techniques; as these are not directly related to musical acoustics, they'll occupy a small section at the bottom of this report.
+    </p>
+
+    <h1>Experiment setup</h1>
+    A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. Most of the models have outdated dependencies. You most likely can't run something that was published in 2017, as the popular machine learning frameworks on which most papers depend (Torch, Keras, Tensorflow) are evolving at a breakneck pace.
+    <br>
+    <br>
+    As an example, I tried to unsuccessfully run the original SampleRNN code, and many other forks, until finding a good one:
+    <ol>
+      <li>https://github.com/soroushmehr/sampleRNN_ICLR2017</li>
+      <li>https://github.com/worosom/docker-zvk-SampleRNN</li>
+      <li>https://github.com/ZVK/sampleRNN_ICLR2017</li>
+      <li><b>The dadabots' own fork</b>: https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu</li>
+      <li>https://github.com/deepsound-project/samplernn-pytorch</li>
+    </ol>
+
+    I finally lucked out and found the RNCM (Royal Northern College of Music) PRiSM (Practice and Research in Science and Music) lab released a modern implementation of SampleRNN with Tensorflow 2<sup><a href="#ref">[7]</a></sup>.
+    <br>
+    <br>
+    To demonstrate the futility in trying to do this myself, one can read the accompanying PRiSM blog post<sup><a href="#ref">[8]</a></sup>:
+    <blockquote>
+    PRiSM is shortly going to publish its own implementation, using TensorFlow 2, and we’ll be explaining the features of the PRiSM SampleRNN in our next instalment – when we will also make the code available on PRiSM’s GitHub pages, along with a number of pretrained and optimised models.
+    </blockquote>
+    If we check the GitHub commits<sup><a href="#ref">[9]</a></sup>, we can see that it took the researcher, Dr. Christopher Melen, around 9 months to get the repository into the shape it was in when I was able to get it running. For me, as a complete beginner to machine learning, to have done the same, is highly unlikely. This gives me slight unease at how unfriendly machine learning models are to beginners.
+
+    <h2>Hardware and OS setup</h2>
+
+    I ran all of the training and experiments on my personal desktop computer, consisting of:
+    <ul>
+      <li>AMD Ryzen 7 3700X 8c/16t processor</li>
+      <li>32GB RAM</li>
+      <li>1TB NVME storage</li>
+      <li>NVIDIA RTX 2070 SUPER GPU</li>
+    </ul>
+    The OS is Fedora 32, and NVIDIA drivers and CUDA toolkit were installed using negativo17's Fedora-nvidia repositories<sup><a href="#ref">[11]</a></sup>.
+
+    <h2>Python setup + minor code tweaks</h2>
+
+    I forked the prism-samplernn codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[12]</a></sup>.
+    <pre>
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+    </pre>
+    Without this parameter, the training would crash on my GPU (RTX 2070 SUPER) with a mysterious error message, "Fail to find the dnn implementation". It's an esoteric fix that one can find scattered across GitHub<sup><a href="#ref">[13]</a></sup>.
+    <br>
+    <br>
+    The Python setup is straightforward using conda<sup><a href="#ref">[14]</a></sup> and following the project's README.md:
+    <pre>
+$ conda create -n prism-samplernn python=3.8 anaconda
+$ conda activate prism-samplernn
+(prism-samplernn) $ pip install -r requirements.txt
+    </pre>
+
+    <h1>Experiment 0: training on a single album</h1>
+    The first thing I tried was to train SampleRNN on Animals as Leaders' self-titled album:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/SZ2WrN93vno" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <br>
+    I downloaded the audio using youtube-dl, converted it to 16kHz mono with ffmpeg (recommended for SampleRNN to perform better), split it up into chunks (ignoring silence) using the prism-samplernn script <code>chunk_audio.py</code>, and ran the training with default parameters:
+    <pre>
+$ python train.py --id aamgen --data_dir ./chunks/ --num_epochs 100 --batch_size 64 --checkpoint_every 5 --output_file_dur 3 --sample_rate 16000
+    </pre>
+    This emitted some generated clips during the training. Let's listen to 2 of the more musically interesting clips (a lot of them are just silence), generated at epoch 20 and 85 of the 100-epoch training. An epoch is one cycle of the entire training dataset - this means that the neural network observed the same album 100 times iteratively to learn how to model it:
+    <br>
+    Epoch 20:<br>
+    <audio controls>
+	    <source src="aamgen_epoch_20.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    Epoch 85:<br>
+    <audio controls>
+	    <source src="aamgen_epoch_85.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    After the training was done (it took ~3 days on my machine), I generated 2 10-second clips of what I thought would be "Animas-as-Leaders-esque" music. The generate command is:
+    <pre>
+$ python generate.py --output_path ./aamgen-out/aamgen.wav --checkpoint_path ./logdir/aamgen/14.09.2020_19.02.06/model.ckpt-90 --config_file ./default.config.json --num_seqs 2 --dur 10 --sample_rate 16000
+    </pre>
+    This says to use the model checkpoint 90. Even though we specified 100 epochs in the training, the model has an intelligent stop when it sees that additional training is not improving the model. In this case, it seems like 90 epochs exhausted the model's learning ability. Here's one of them (both sound equally bad):
+    <br>
+    <audio controls>
+	    <source src="aamgen_0.wav" type="audio/wav"</source>
+    </audio>
+    <h2>Experiment 0 lessons</h2>
+    Recall that in the SampleRNN paper, the multiple layers of the RNN determined the learning of audio patterns at different temporal scales:
+    <figure>
+    <img src="8_samplernn.png" width=700px/>
+    <figcaption>Higher RNN layers map to wider temporal scales <sup><a href="#ref">[3]</a></sup></figcaption>
+    </figure>
+    <br>
+    The lowest temporal scale (consecutive samples) represents very low-level audio features (e.g. timbre), while higher scales can (hypothetically) go as far as representing repeating choruses or verses minutes apart.
+    <br>
+    With this in mind, I applied tweaks that Karl Hiner<sup><a href="#ref">[15]</a></sup> did in his experiments - for my next experiment, I would:
+    <ul>
+	    <li>increase epochs from 100 to 250 (longer training should lead to better results)</li>
+	    <li>increase the number of RNN layers from 4 to 5 to try to create more cohesive music</li>
+	    <li>Use more training data than just one album</li>
+    </ul>
+    <h1>Experiment 1: longer training on multiple albums</h1>
+    For my next experiment, I downloaded instrumental versions of the albums of Periphery (instrumental - I didn't want vocals mixing into the results, as I want to focus on musical instruments acoustics) and Mestis (an instrumental band). The data fetch and preprocessing scripts are available in my prism-samplernn fork:
+    <pre>
+#!/usr/bin/env bash
+
+echo "Fetching training data - youtube-dl wav files for Mestis and Periphery albums"
+
+# youtube playlists for Mestis - Eikasia, Polysemy, Basal Ganglia
+mestis_album_1="PLNOrZEIoYAMgLJeZeCUEhABLPz7yqkyfI"
+mestis_album_2="PLfoVvOUi1CqV0O-yMdOvTff_vp8hOQnWi"
+mestis_album_3="PLRK89uMjq03BMsxBKFGBcDAh2G7ACwJMK"
+
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${mestis_album_1}
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${mestis_album_2}
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${mestis_album_3}
+
+# youtube playlists for instrumental Periphery albums - Periphery III, I, II, IV, Omega, Juggernaut
+periphery_album_1="PLSTnbYVfZR03JGmoJri6Sgvl4f0VAi9st"
+periphery_album_2="PL7DVODcLLjFplM5Rw-bNUyrwAECIPRK26"
+periphery_album_3="PLuEYu7jyZXdde7ePWV1RUvrpDKB8Gr6ex"
+periphery_album_45="PLEFyfJZV-vtKeBedXTv82yxS7gRZkzfWr"
+periphery_album_6="PL6FJ2Ri6gSpOWcbdq--P5J0IRcgH-4RVm"
+
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_1}
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_2}
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_3}
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_45}
+youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_6}
+
+mkdir -p periphery-raw
+mkdir -p mestis-raw
+
+find . -maxdepth 1 -mindepth 1 -type f -iname '*PERIPHERY*.wav' -exec mv {} periphery-raw/ \;
+find . -maxdepth 1 -mindepth 1 -type f -iname '*MESTIS*.wav' -exec mv {} mestis-raw/ \;
+find . -maxdepth 1 -mindepth 1 -type f -iname '*Javier*.wav' -exec mv {} mestis-raw/ \;
+find . -maxdepth 1 -mindepth 1 -type f -iname '*Suspiro*.wav' -exec mv {} mestis-raw/ \;
+find . -maxdepth 1 -mindepth 1 -type f -name '*.wav' -exec rm {} \;
+
+mkdir -p mestis-processed
+mkdir -p periphery-processed
+
+echo "Processing each wav file to 16kHz mono"
+
+for f in mestis-raw/*.wav; do
+        ffmpeg -i "${f}" -ac 1 -ar 16000 "mestis-processed/$(basename "$f")";
+done
+
+for f in periphery-raw/*.wav; do
+        ffmpeg -i "${f}" -ac 1 -ar 16000 "periphery-processed/$(basename "$f")";
+done
+
+mkdir -p periphery-chunks
+mkdir -p mestis-chunks
+mkdir -p mixed-chunks
+
+for f in mestis-processed/*.wav; do
+        python ../chunk_audio.py --input_file "${f}" --output_dir mestis-chunks --chunk_length 8000 --overlap 1000
+        python ../chunk_audio.py --input_file "${f}" --output_dir mixed-chunks --chunk_length 8000 --overlap 1000
+done
+
+for f in periphery-processed/*.wav; do
+        python ../chunk_audio.py --input_file "${f}" --output_dir periphery-chunks --chunk_length 8000 --overlap 1000
+        python ../chunk_audio.py --input_file "${f}" --output_dir mixed-chunks --chunk_length 8000 --overlap 1000
+done
+    </pre>
+    What the script does is:
+    <ul>
+	    <li>Fetch files for every Mestis song (from YouTube playlists + youtube-dl)</li>
+	    <li>Fetch files for every instrumental Periphery song (from YouTube playlists + youtube-dl)</li>
+	    <li>Pre-process them into 16kHz mono with ffmpeg (for optimal training)</li>
+	    <li>Apply the chunk_audio.py script to split into non-silent chunks</li>
+	    <li>Create 3 sets of training data - periphery-chunks, mestis-chunks, mixed-chunks</li>
+    </ul>
+    My intention was to train the model on each of the sets of training chunks, to create generated music that:
+    <ul>
+	    <li>Sounds like Periphery only</li>
+	    <li>Sounds like Mestis only</li>
+	    <li>Sounds like "Mestiphery", an organic mashup</li>
+    </ul>
+    <h2>Experiment 1 part 1 - Periphery only</h2>
+    The training command for periphery-only is:
+    <pre>
+$ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks/ --num_epochs 250 --batch_size 64 --sample_rate 16000
+    </pre>
+    It took <b>1 week</b> to complete the training on Periphery only. I bold 1 week because, in an academic semester of 3 months, taking 8% of the semester to run one single experiment in a large project concerns me. My limitation is computational power. I could have taken advantage of expensive hardware (e.g. using the resources of my future research lab, DDMAL), but I felt that this would go against the spirit of an independent student project.
+    <br>
+    <br>
+    Also, the conclusion that running all of my envisioned experiments is impossible in the time frame of a semester is actually a valuable outcome. It shows the difficulty of black-box computational models where large companies are leaps and bounds ahead due to the unprecedented compute power available to them(FIND REFERENCE FAANGMAN NEURAL NETWORKS).
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li>mlacoustics (citations.bib)</li>
+      <li>wavenetpaper (citations.bib)</li>
+      <li>samplernnpaper (citations.bib)</li>
+      <li>magentaddsp (citations.bib)</li>
+      <li>dadabots (citations.bib)</li>
+      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
+      <li>prism (citations.bib)</li>
+      <li>prism-blog (citations.bib)</li>
+      <li>prism gh commits</li>
+      <li>my fork</li>
+      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
+      <li> conda </li>
+    </ol>
   </body>
 </html>
 
