@@ -1,0 +1,5 @@
+librosa
+essentia
+pyacoustid
+numpy
+pysoundfile

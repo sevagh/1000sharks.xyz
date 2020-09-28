@@ -69,6 +69,7 @@
     PRiSM is shortly going to publish its own implementation, using TensorFlow 2, and we’ll be explaining the features of the PRiSM SampleRNN in our next instalment – when we will also make the code available on PRiSM’s GitHub pages, along with a number of pretrained and optimised models.
     </blockquote>
     If we check the GitHub commits<sup><a href="#ref">[9]</a></sup>, we can see that it took the researcher, Dr. Christopher Melen, around 9 months to get the repository into the shape it was in when I was able to get it running. For me, as a complete beginner to machine learning, to have done the same, is highly unlikely. This gives me slight unease at how unfriendly machine learning models are to beginners.
+    
 
     <h2>Hardware and OS setup</h2>
 
@@ -130,6 +131,7 @@ $ python generate.py --output_path ./aamgen-out/aamgen.wav --checkpoint_path ./l
     <audio controls>
 	    <source src="aamgen_0.wav" type="audio/wav"</source>
     </audio>
+
     <h2>Experiment 0 lessons</h2>
     Recall that in the SampleRNN paper, the multiple layers of the RNN determined the learning of audio patterns at different temporal scales:
     <figure>
@@ -139,12 +141,78 @@ $ python generate.py --output_path ./aamgen-out/aamgen.wav --checkpoint_path ./l
     <br>
     The lowest temporal scale (consecutive samples) represents very low-level audio features (e.g. timbre), while higher scales can (hypothetically) go as far as representing repeating choruses or verses minutes apart.
     <br>
-    With this in mind, I applied tweaks that Karl Hiner<sup><a href="#ref">[15]</a></sup> did in his experiments - for my next experiment, I would:
+    With this in mind, I applied tweaks that Karl Hiner<sup><a href="#ref">[15]</a></sup> did in his experiments - for my next experiment, I would try some or all of the following:
     <ul>
-	    <li>increase epochs from 100 to 250 (longer training should lead to better results)</li>
-	    <li>increase the number of RNN layers from 4 to 5 to try to create more cohesive music</li>
+	    <li>Increase the number of RNN layers from 4 to 5 to try to create more cohesive music</li>
 	    <li>Use more training data than just one album</li>
+	    <li>Increase epochs from 100 to 250 (longer training may lead to better results)</li>
     </ul>
+
+    <h2>SampleRNN hyperparameters table</h2>
+    *Hyperparameter in machine learning = something that a human must set in the model, the model can't learn it on its own. As opposed to parameters, which are the internal magic numbers that are computed
+    <br>
+    <br>
+    I'll summarize the available SampleRNN hyperparameters and other customizeable steps compared across the original 2017 ICLR implementation, the Dadabots fork, the PRiSM fork which I use throughout the rest of this report, and finally my own modifications to the PRiSM parameters after experiment 0:
+    <br>
+    <br>
+    <table>
+      <tr>
+        <th></th>
+        <th>Original</th>
+        <th>Dadabots</th>
+        <th>PRiSM</th>
+        <th>Mine</th>
+        <th>Descr</th>
+      </tr>
+      <tr>
+        <th>RNN layers</th>
+        <td>4</td>
+        <td>5</td>
+        <td>4</td>
+        <td>5</td>
+        <td>Temporal timescale of learning (more layers = learn patterns on wider timescale)</td>
+      </tr>
+      <tr>
+        <th>Tiers</th>
+        <td>2 or 3</td>
+        <td>2 or 3 (2 recommended)</td>
+        <td>3</td>
+        <td>3</td>
+        <td>Tiers of RNN (more = wider temporal timescale)</td>
+      </tr>
+      <tr>
+        <th>Frame sizes (corresponds to tiers)</th>
+        <td>16</td>
+        <td>16</td>
+        <td>16,64</td>
+        <td>16,64</td>
+        <td>Samples apart between low and high timescales</td>
+      </tr>
+      <tr>
+        <th>Sample rate</th>
+        <td>16000 (fixed)</td>
+        <td>16000</td>
+        <td>16000</td>
+        <td>16000</td>
+        <td>Sample rate of training/generating waveform (lower = faster learning, better able to learn long-timescale patterns)</td>
+      </tr>
+      <tr>
+        <th>Training input</th>
+        <td>No details</td>
+        <td>Chop albums into 8s + 1s overlap</td>
+        <td>Chop albums into 8s + 1s overlap</td>
+        <td>Chop albums into 8s + 1s overlap</td>
+        <td>Suggestions on how to prepare training data</td>
+      </tr>
+      <tr>
+        <th>Epochs</th>
+        <td>Not customizeable</td>
+        <td>Not customizeable</td>
+        <td>100</td>
+        <td>100, 250</td>
+        <td>Entire cycles of training on the same data (more = possibly better learning, but not necessarily)</td>
+      </tr>
+    </table> 
     <h1>Experiment 1: longer training on multiple albums</h1>
     For my next experiment, I downloaded instrumental versions of the albums of Periphery (instrumental - I didn't want vocals mixing into the results, as I want to focus on musical instruments acoustics) and Mestis (an instrumental band). The data fetch and preprocessing scripts are available in my prism-samplernn fork:
     <pre>
@@ -227,7 +295,7 @@ done
     <h2>Experiment 1 part 1 - Periphery only</h2>
     The training command for periphery-only is:
     <pre>
-$ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks/ --num_epochs 250 --batch_size 64 --sample_rate 16000
+$ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks/ --num_epochs 100 --batch_size 64 --sample_rate 16000
     </pre>
     It took <b>1 week</b> to complete the training on Periphery only. I bold 1 week because, in an academic semester of 3 months, taking 8% of the semester to run one single experiment in a large project concerns me. My limitation is computational power. I could have taken advantage of expensive hardware (e.g. using the resources of my future research lab, DDMAL), but I felt that this would go against the spirit of an independent student project.
     <br>
@@ -249,111 +317,177 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     This nullifies my hypothesis, that it's possible to expect a neural network trained (by an amateur) for 1 week to sound like a band of real professional musicians. A trend I witnessed in all of the Periphery generated clips is the lack of palm-muted distorted guitar chords (a sound very characteristic to Periphery) in the final outputs. All of the harmonic content seems to be a high-pitched whistling, but there are convincing drum sounds:
     <br>
     <br>
-    Epoch 70:
-    <br>
-    <audio controls>
-	    <source src="periphery_only_epoch_70.wav" type="audio/wav"</source>
-    </audio>
-    <br>
     Epoch 67:
     <br>
     <audio controls>
 	    <source src="periphery_only_epoch_67.wav" type="audio/wav"</source>
     </audio>
     <br>
-    Epoch 230:
+    Epoch 70:
     <br>
     <audio controls>
-	    <source src="periphery_only_epoch_230.wav" type="audio/wav"</source>
+	    <source src="periphery_only_epoch_70.wav" type="audio/wav"</source>
     </audio>
     <br>
 
-    <h2>Generated audio deep dive</h2>
+    <h3>Generated audio visualization</h3>
     The above clips show collections of realistic note onsets. One of my original statements about WaveNet and SampleRNN was that they could produce music with convincing dynamics and timbre, to make us believe real humans played it. Observing various aspects of the waveform in the time and frequency domain should be useful.
     <br>
     <br>
-    Let's view each clip (67, 70, 230) in the time domain and frequency domain (with a spectrogram):
+    Let's view each clip (epochs 67, 70) in the time domain and frequency domain (with a spectrogram):
     <img src="periphery_epoch_67_timedomain.png" width=800px/>
     <img src="periphery_epoch_70_timedomain.png" width=800px/>
-    <img src="periphery_epoch_230_timedomain.png" width=800px/>
     <img src="periphery_epoch_67_spectrogram.png" width=800px/>
     <img src="periphery_epoch_70_spectrogram.png" width=800px/>
-    <img src="periphery_epoch_230_spectrogram.png" width=800px/>
     <br>
-    Although this is subjective, one can see the dynamic nature of the produced audio in the plots above. It really does look like there are real musical variations in the complex waveform.
+    Although this is subjective, one can see the dynamic nature of the produced audio in the plots above. It really does look like there are real musical variations in the complex waveform (aside from the totally blank silences which are odd in real music).
 
-    <h2>Experimenting with mu-law quantization</h2>
-    Something else I mentioned in the paper presentation was how WaveNet used mu-law quantization while SampleRNN didn't. Karl Hiner remarked in his experiments that the SampleRNN results sounded "bit-crushed" due to the poor linear quantization when compared with WaveNet's mu-law quantization results. The PRiSM SampleRNN fork actually supports both linear and mu-law quantization for generated audio.
+    <h3>Mu-law vs linear quantization</h3>
+    Karl Hiner's blog post touches on WaveNet's mu-law quantization, and claims it sounds better than SampleRNN's linear quantization. In fact, I found that every SampleRNN implementation I found had options for linear and mu-law quantization (perhaps it was added later). In fact the original ICLR 2017 paper even has an "a-law quantization" (similar to mu-law). Let's hear what each sounds like:
     <br>
     <br>
-    Let's generate some test clips with linear and mu-law quantization to see the difference for ourselves, by passing a "mu-law.config.json" and "linear.config.json" config files to the generate.py script respectively. We can also set the generated output sample rate to 48kHz (to avoid the low 16kHz rate affecting our judgement):
-    <pre>
-$ python generate.py --output_path ./peripherygen-linear-quant --checkpoint_path ./logdir/periphery_only/22.09.2020_22.25.13/model.ckpt-248 --config_file ./linear-quant.config.json --num_seqs 2 --dur 5 --sample_rate 16000
-...output truncated...
-Generated samples 79361 - 79616 of 80000 (time elapsed: 91.430 seconds)
-Generated samples 79617 - 79872 of 80000 (time elapsed: 91.704 seconds)
-Generated samples 79873 - 80000 of 80000 (time elapsed: 91.981 seconds)
-Generated sample output to ./peripherygen-linear-quant_0.wav
-Generated sample output to ./peripherygen-linear-quant_1.wav
-Done
-$ python generate.py --output_path ./peripherygen-mulaw-quant --checkpoint_path ./logdir/periphery_only/22.09.2020_22.25.13/model.ckpt-248 --config_file ./mu-law.config.json --num_seqs 2 --dur 5 --sample_rate 16000
-...output truncated...
-Generated samples 79617 - 79872 of 80000 (time elapsed: 91.949 seconds)
-Generated samples 79873 - 80000 of 80000 (time elapsed: 92.223 seconds)
-Generated sample output to ./peripherygen-mulaw-quant_0.wav
-Generated sample output to ./peripherygen-mulaw-quant_1.wav
-Done
-    </pre>
-    Note that generating samples is much faster than training. It takes 3 minutes to generate the 4 5-second 16kHz clips for comparing linear to mu-law quantization. Let's observe the outputs:
-    <br>
-    <br>
-    Linear quant:
+    Periphery epoch 83, mu-law quantization:
     <br>
     <audio controls>
-	    <source src="peripherygen-linear-quant_0.wav" type="audio/wav"</source>
+	    <source src="periphery_epoch_83_mulaw.wav" type="audio/wav"</source>
     </audio>
+    <br>
+    Periphery epoch 83, linear quantization <b>WARNING! LOUD!</b>:
     <br>
     <audio controls>
-	    <source src="peripherygen-linear-quant_1.wav" type="audio/wav"</source>
+	    <source src="periphery_epoch_83_linear.wav" type="audio/wav"</source>
     </audio>
     <br>
-    These are mostly completely junk.
-    <br>
-    <br>
-    mu-law quant:
-    <br>
-    <audio controls>
-	    <source src="peripherygen-mulaw-quant_0.wav" type="audio/wav"</source>
-    </audio>
-    <br>
-    <audio controls>
-	    <source src="peripherygen-mulaw-quant_1.wav" type="audio/wav"</source>
-    </audio>
-    <br>
-    These generated clips are mostly completely junk, and indicate the problem with SampleRNN - it's really hard to tell whether the output will contain real musical content.
+    In my subjective listening test, the linear quantization output is very loud, almost to the point of distortion and clipping. The mu-law quantization is outputting music with more subtle volume, possibly since its more suited for the logarithmic human experience of loudness.
 
-    <h2>Rolling Experiment 2+ into experiment 1</h2>
+    <h2>Rolling experiment 2+ into experiment 1</h2>
     As noted, experiment 1 took <b>1 week</b> to train, or 8% of the Fall semester. To top it off, the results were very divorced from my expectations:
     <ul>
       <li>The resulting generated audio is mostly silence and junk</li>
       <li>There are some interesting potentially musical sounds, but it's all high-pitched whistling and doesn't contain any characteristics of the band Periphery (palm-muted distorted guitar chords, etc.)</li>
       <li>I have to generate 100s or 1000s of clips and curate the results to create a final result - the chances of getting 1 cohesive "song" (let's say, 2 minutes of contiguous music) are pretty slim</li>
     </ul>
-    With these in mind, I didn't see any value in performing training on separate bands, and I didn't think I'd have enough time to train on separate instruments or song segments. Instead, what I did was mix the Mestis data into the Periphery data, and continue training the model (that was initially trained only on Periphery for 250 epochs). This took another week, bringing the sum total of all generative experiments (including failed starts) to <b>3 weeks</b>. 3 weeks of letting my computer crunch data to compute a model that produces strange, confusing, and mostly silent outputs was a disappointing experience.
-
+    With this in mind, I didn't see any value in performing training on separate bands, and I didn't think I'd have enough time to train on separate instruments or song segments. Instead, what I did was mix the Mestis data into the Periphery data, and continue training the model (that was initially trained only on Periphery for 100 epochs) for 250 epochs.
+    <br>
+    <br>
+    This took another week, bringing the sum total of all generative experiments (including failed starts) to <b>3 weeks</b>. 3 weeks of letting my computer crunch data to compute a model that produces strange, confusing, and mostly silent outputs was a disappointing experience.
+    <br>
+    <br>
+    In the subsequent generation + curation phases, I'll use different model checkpoints (between epochs 0 and 250) to generate music at different points of the model's knowledge.
+    <h2>Training results</h2>
+    The results of training SampleRNN are stored in the <code>logdir</code> directory, in timestamped directories storing checkpoints for intermediate epochs in training. Here's a <code>tree</code> view of of the training. The size of the training directory is 51GB, after having been trained on all of the albums listed above (709MB of music):
+    <pre>
+$ tree logdir/periphery_only/ -L 2
+logdir/periphery_only/
+├── 15.09.2020_17.36.46
+│   ├── checkpoint
+│   ├── model.ckpt-79.data-00000-of-00001
+│   ├── model.ckpt-79.index
+│   ├── model.ckpt-80.data-00000-of-00001
+│   ├── model.ckpt-80.index
+│   ├── model.ckpt-81.data-00000-of-00001
+│   ├── model.ckpt-81.index
+│   ├── model.ckpt-82.data-00000-of-00001
+│   ├── model.ckpt-82.index
+│   ├── model.ckpt-83.data-00000-of-00001
+│   ├── model.ckpt-83.index
+│   └── train
+├── 17.09.2020_21.55.43
+│   ├── checkpoint
+│   ├── model.ckpt-89.data-00000-of-00001
+│   ├── model.ckpt-89.index
+│   ├── model.ckpt-90.data-00000-of-00001
+│   ├── model.ckpt-90.index
+│   ├── model.ckpt-91.data-00000-of-00001
+│   ├── model.ckpt-91.index
+│   ├── model.ckpt-92.data-00000-of-00001
+│   ├── model.ckpt-92.index
+│   ├── model.ckpt-93.data-00000-of-00001
+│   ├── model.ckpt-93.index
+│   └── train
+...truncated...
+└── 22.09.2020_22.25.13
+    ├── checkpoint
+    ├── model.ckpt-244.data-00000-of-00001
+    ├── model.ckpt-244.index
+    ├── model.ckpt-245.data-00000-of-00001
+    ├── model.ckpt-245.index
+    ├── model.ckpt-246.data-00000-of-00001
+    ├── model.ckpt-246.index
+    ├── model.ckpt-247.data-00000-of-00001
+    ├── model.ckpt-247.index
+    ├── model.ckpt-248.data-00000-of-00001
+    ├── model.ckpt-248.index
+    └── train
+    </pre>
     <h1>Salvaging neural audio results with curation</h1>
-    An important thing to note is that the Dadabots never claimed that their model spit out perfect music. They focus heavily on curating<sup><a href="#ref">[16]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into an aesthetically pleasing - or at least cohesive - piece of music.
+    An important thing to note is that the Dadabots never claimed that their model spit out perfect music. They focus heavily on curating<sup><a href="#ref">[16]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music without long periods of silence.
     <br>
     <br>
     The goal of my automated curation script is to:
     <ul>
 	    <li>Load every clip generated by the trained SampleRNN model</li>
-	    <li>Group clips together based on their musical content (i.e. mostly musical clips should float to the top of the list, mostly junk and silence to the bottom)</li>
-	    <li>Try to categorize the clips based on their musical similarity to each other</li>
-	    <li>Concatenate the audio clips using ffmpeg crossfading</li>
+	    <li>Trim out the silence</li>
+	    <li>Potentially apply some MIR techniques* to group similar clips together, to create the sense of a "cohesive" musical piece</li>
+	    <li>Concatenate the result clips of sound with crossfading</li>
     </ul>
-    This is more in the domain of MUMT 621 (music information retrieval), so I won't spend too much time on it. Ideally, we can use popular MIR Python libraries (Librosa, madmom, Essentia) to assist us in the curation step - I want to minimize the amount of visual/manual audio curation that I do, and rely mostly only on code.
+    *Ideally, we would use popular MIR Python libraries (librosa, madmom, Essentia) to assist us in the curation step, e.g. by grouping similar clips by their musical content. However, as this is more in the domain of MUMT 621 (music information retrieval), and not an easy task, I won't spend too much time on it.
+    <br>
+    <br>
+    I want to minimize the amount of visual/manual audio curation that I do, and rely only on the simple curation listed above.
 
+    <h2>Generating music with the trained model</h2>
+    First, I use the trained model described earlier to generate audio clips at various epochs. I chose the epochs randomly - the ones before checkpoint 100 are trained only on Periphery, while the ones after checkpoint 100 are trained on a mix of Periphery and Mestis (aka "Mestiphery").
+    <br>
+    <br>
+    According to the dadabots' README<sup><a href="#ref">[18]</a></sup>, they don't necessarily accept that the latest training epoch is the best one. That's why I picked a variety of epochs:
+    <blockquote>
+      However, we found the latest checkpoint does not always create the best music. Instead we listen to the test audio generated at each checkpoint, choose our favorite checkpoint, and delete the newer checkpoints, before generating a huge batch with this script.
+    </blockquote>
+    I generated sequences of different durations. The generate commands are as follows:
+    <pre>
+# epoch 83, 92 (periphery only)
+
+$ python generate.py --output_path ./to-curate-periphery-epoch-83/gen.wav --checkpoint_path ./logdir/periphery_only/15.09.2020_17.36.46/model.ckpt-83 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
+$ python generate.py --output_path ./to-curate-periphery-epoch-83-2/gen.wav --checkpoint_path ./logdir/periphery_only/15.09.2020_17.36.46/model.ckpt-83 --config_file ./default.config.json --num_seqs 100 --dur 8 --sample_rate 16000
+$ python generate.py --output_path ./to-curate-periphery-epoch-92/gen.wav --checkpoint_path ./logdir/periphery_only/17.09.2020_21.55.43/model.ckpt-92 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
+
+# epoch 139, 165, 188 (mestiphery - mixed periphery + mestis)
+
+$ python generate.py --output_path ./to-curate-mestiphery-epoch-139/gen.wav --checkpoint_path ./logdir/periphery_only/18.09.2020_04.32.49/model.ckpt-139 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
+$ python generate.py --output_path ./to-curate-mestiphery-epoch-165/gen.wav --checkpoint_path ./logdir/periphery_only/20.09.2020_10.04.13/model.ckpt-165 --config_file ./default.config.json --num_seqs 100 --dur 8 --sample_rate 16000
+$ python generate.py --output_path ./mestiphery-to-curate-epoch-188/gen.wav --checkpoint_path ./logdir/periphery_only/20.09.2020_17.12.32/model.ckpt-188 --config_file ./default.config.json --num_seqs 30 --dur 10 --sample_rate 16000
+    </pre>
+    The results of this training are directories named "to-curate-*" full of wav files:
+    <pre>
+$ ls to-curate-*
+to-curate-mestiphery-epoch-139:
+gen_0.wav  gen_1.wav  gen_2.wav  gen_3.wav  gen_4.wav  gen_5.wav  gen_6.wav  gen_7.wav  gen_8.wav  gen_9.wav
+
+to-curate-mestiphery-epoch-165:
+gen_0.wav   gen_28.wav  gen_46.wav  gen_64.wav  gen_82.wav
+gen_10.wav  gen_29.wav  gen_47.wav  gen_65.wav  gen_83.wav
+...truncated...
+
+to-curate-mestiphery-epoch-188:
+gen_0.wav   gen_12.wav  gen_15.wav  gen_18.wav  gen_20.wav  gen_23.wav  gen_26.wav  gen_29.wav  gen_4.wav  gen_7.wav
+gen_10.wav  gen_13.wav  gen_16.wav  gen_19.wav  gen_21.wav  gen_24.wav  gen_27.wav  gen_2.wav   gen_5.wav  gen_8.wav
+gen_11.wav  gen_14.wav  gen_17.wav  gen_1.wav   gen_22.wav  gen_25.wav  gen_28.wav  gen_3.wav   gen_6.wav  gen_9.wav
+
+to-curate-mestiphery-epoch-92:
+gen_0.wav  gen_1.wav  gen_2.wav  gen_3.wav  gen_4.wav  gen_5.wav  gen_6.wav  gen_7.wav  gen_8.wav  gen_9.wav
+
+to-curate-periphery-epoch-83:
+gen_0.wav  gen_2.wav  gen_4.wav  gen_6.wav  gen_8.wav
+gen_1.wav  gen_3.wav  gen_5.wav  gen_7.wav  gen_9.wav
+
+to-curate-periphery-epoch-83-2:
+gen_0.wav   gen_28.wav  gen_46.wav  gen_64.wav  gen_82.wav
+gen_10.wav  gen_29.wav  gen_47.wav  gen_65.wav  gen_83.wav
+gen_11.wav  gen_2.wav   gen_48.wav  gen_66.wav  gen_84.wav
+    </pre>
+    After listening to several of the files manually, I noticed that the lower epochs produce better, more cohesive, and longer bits of music. This to me indicates the failure of experiment 2, of mixing Periphery + Mestis and training for 250 epochs. This could be due to the nature of the training data - the neural network is trying to generate samples that minimize error for two distinct musical artists and styles, so it can resort to outputting nothing (to minimize numerical error between the two sets of training data). Also, like the Dadabots say, perhaps training for too long isn't beneficial.
+    <h2>Chromaprint-based curation script</h2>
     <h1>Supplementing neural audio with structured synthesis</h1>
     <h2>Magenta and Differentiable DSP</h2>
     <h2>Training Karplus-Strong parameters with machine learning</h2>
