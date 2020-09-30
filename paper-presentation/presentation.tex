@@ -34,9 +34,7 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{Physical sound}
-	\ \\
-	An Introduction to the Psychology of Hearing -- Brian C J Moore
+	\frametitle{Physical sound waves}
 	\begin{figure}
 	\includegraphics[height=5cm]{./1_sound_pressure.jpg}
 		\caption{a) air pressure vs. distance, b) air molecule displacement \footfullcite{airpressure}}
@@ -46,20 +44,54 @@
 \note{
 \begin{itemize}
 	\item
-		Sound is a displacement of air pressure by a sound source
-	\item
-		Sound pressure causes displacement of air molecules in direction of sound (longitudinal)
+		Sound waves can be modelled by air pressure variations or air molecule displacement
 	\item
 		Hearing is when our ears detect sound pressure variations
 	\item
-		Tickles our basilar membrane by frequency component
+		Vibrates our basilar membrane by frequency component
 	\item
 		Travels up the auditory nerve for further processing (so we can recognize and enjoy speech, music, etc.)
 \end{itemize}
 }
 
 \begin{frame}
-	\frametitle{From physical to digital 1}
+	\frametitle{Waveforms (human pov)}
+	\begin{figure}
+	\includegraphics[height=5cm]{./1_5_tonotopic.jpg}
+		\caption{Tonotopic organization of the inner ear\footfullcite{tonotopic}}
+	\end{figure}
+\end{frame}
+
+\note{
+\begin{itemize}
+	\item
+		Hearing is when our ears detect sound pressure variations
+	\item
+		Vibrates our basilar membrane by frequency component
+	\item
+		Travels up the auditory nerve for further processing (so we can recognize and enjoy speech, music, etc.)
+\end{itemize}
+}
+
+\begin{frame}
+	\frametitle{Waveforms (human pov)}
+	\begin{figure}
+	\includegraphics[height=5.5cm]{./1_7_auditory_pathway.jpg}
+		\caption{Ascending auditory pathways \footfullcite{auditorypathway}}
+	\end{figure}
+\end{frame}
+
+\note{
+\begin{itemize}
+	\item
+		Travels up the auditory nerve for further processing (so we can recognize and enjoy speech, music, etc.)
+	\item
+		An actual ``neural network''
+\end{itemize}
+}
+
+\begin{frame}
+	\frametitle{Waveforms (digital pov)}
 	\ \\
 	Microphones are transducers -- convert sound pressure variations into an analog electric signal
 
@@ -70,7 +102,7 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{From physical to digital 2}
+	\frametitle{Waveforms (digital pov)}
 	\ \\
 	Other electronic elements convert the analog signal to a digital signal through PCM.
 	\begin{figure}
@@ -96,18 +128,8 @@
 \end{itemize}
 }
 
-\begin{frame}
-	\frametitle{Waveform domain}
-	Audio and music on a computer are represented as arrays of numbers\ \\
-	CLICK TO PLAY $\rightarrow$ \href{run:./funkybass.wav}{Cool bass riff} \footfullcite{hotnfun}\
-	\begin{figure}
-	\includegraphics[height=5cm]{./4_funkybass.png}
-		\caption{Cool bass riff waveform}
-	\end{figure}
-\end{frame}
-
 \begin{frame}[fragile]
-	\frametitle{How meaningful is the waveform domain?}
+	\frametitle{How meaningful is the digital waveform?}
 	\begin{small}
 	\begin{verbatim}
 		>> disp(x(50:128));
@@ -129,6 +151,15 @@
 \end{frame}
 
 \begin{frame}
+	\frametitle{Waveform domain}
+	CLICK TO PLAY $\rightarrow$ \href{run:./funkybass.wav}{Cool bass riff} \footfullcite{hotnfun}\
+	\begin{figure}
+	\includegraphics[height=5cm]{./4_funkybass.png}
+		\caption{Cool bass riff waveform}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
 	\frametitle{Frequency domain}
 	\begin{figure}
 	\includegraphics[height=6cm]{./5_funkybass_spectrogram.png}
@@ -144,28 +175,6 @@
 			The STFT -- chunk audio by overlapping time slices, FFT of each slice. show frequency at smaller increments than ``whole song'' - spectrogram above is demo of STFT
 		\item
 			Note that this is much more meaningful to humans than the waveform.
-	\end{itemize}
-}
-
-\begin{frame}
-	\frametitle{Waveform vs. frequency domain}
-	\begin{itemize}
-		\item[] \textbf{\textcolor{ao(english)}{Pros}}
-		\item Often in the spectral domain, phase information is lost (or omitted)\footfullcite{phase}. Modeling the waveform domain implicitly preserves phase information, leading to natural timbres and dynamics \textbf{in the generative domain}.
-	\end{itemize}
-	\vspace{1em}
-	\begin{itemize}
-		\item[] \textbf{\textcolor{red}{Cons}}
-		\item Dimensionality of recognizeable audio features (notes, melodies, utterances) is \textit{huge} in the waveform domain (48,000 samples for a short guitar pluck). One of the reasons why higher-level representations are useful (but suffer from imperfect re-translation)\footfullcite{samplernn}.
-	\end{itemize}
-\end{frame}
-
-\note{
-	\begin{itemize}
-		\item
-			Phase source is great, check it out, good examples on how missing phase affects the timbre of a piano clip. It's a deepmind engineer and extensively cited
-		\item
-			Second quote is from the sampleRNN paper, one of the primary methods i'll be introducing today
 	\end{itemize}
 }
 
@@ -188,6 +197,28 @@
 	\begin{itemize}
 		\item
 			I'm not even aware of how many of these exist. Tabs, sheet music, etc.
+	\end{itemize}
+}
+
+\begin{frame}
+	\frametitle{Waveform vs. frequency domain}
+	\begin{itemize}
+		\item[] \textbf{\textcolor{ao(english)}{Pros}}
+		\item Often in the spectral domain, phase information is lost (or omitted)\footfullcite{phase}. Modeling the waveform domain implicitly preserves phase information, leading to natural timbres and dynamics \textbf{in the generative domain}.
+	\end{itemize}
+	\vspace{1em}
+	\begin{itemize}
+		\item[] \textbf{\textcolor{red}{Cons}}
+		\item Dimensionality of recognizeable audio features (notes, melodies, utterances) is \textit{huge} in the waveform domain (48,000 samples for a short guitar pluck). One of the reasons why higher-level representations are useful (but suffer from imperfect re-translation)\footfullcite{samplernn}.
+	\end{itemize}
+\end{frame}
+
+\note{
+	\begin{itemize}
+		\item
+			Phase source is great, check it out, good examples on how missing phase affects the timbre of a piano clip. It's a deepmind engineer and extensively cited
+		\item
+			Second quote is from the sampleRNN paper, one of the primary methods i'll be introducing today
 	\end{itemize}
 }
 
@@ -547,6 +578,14 @@
 }
 
 \begin{frame}
+	\frametitle{Recall}
+	\begin{figure}
+	\includegraphics[height=4cm]{./6_5_ml_acoustics.jpg}
+		\caption{Analytic physical models (lower left) give basic insights about physical systems. More sophisticated models, reliant on computational methods (lower right), can model more complex phenomena. Whereas physical models are reliant on rules, which are updated by physical evidence (data), ML is purely data-driven (upper left). By augmenting ML methods with physical models to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained \footfullcite{mlacoustics}}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
 \frametitle{Middle ground}
 % double column pros cons like thanos presentation with colors
 	\textbf{\textcolor{burgundy}{Traditional synthesis}}: structured building blocks based on frequency and/or symbolic representation. Fiddly parameters, imperfect recreations\\
@@ -580,6 +619,29 @@
 			Differentiability is not new. Relevant in many forms of numerical computation e.g. fem. Just very generalized in neural networks
 		\item
 			``Differentiable'' -- machine learning is often done with gradients -- gradient descent. The machine ``learns'' by reducing the error through the gradient. As DSP building blocks are differentiable, they can thus be machine learned (or more accurately, parameters can be estimated, and from the differentiability, the resulting quality improvement can be measured e.g. compared to a real violin sound).
+	\end{itemize}
+}
+
+\begin{frame}
+	\frametitle{Conclusions}
+	\begin{itemize}
+		\item
+			Modeling audio in the waveform domain is now feasible with the computational power of modern machines and neural networks
+		\item
+			WaveNet and SampleRNN were the trendsetters, and there is a lot of derivative work since then (WaveRNN, Jukebox, etc.)
+		\item
+			Advantages include learning realistic timbre, dynamics, intonations, etc. directly from the waveform. No reconstruction problems
+		\item
+			Disadvantages include unstructured/unreliable outputs, black box (difficult to understand) computational model
+	\end{itemize}
+\end{frame}
+
+\note{
+	\begin{itemize}
+		\item
+			It's taken me 3 weeks of training so far to get even really bad outputs. Computational power is a real limitation
+		\item
+			We can't compete with BigCos and their own special sauce (computation, storage, in-house expertise)
 	\end{itemize}
 }
 
