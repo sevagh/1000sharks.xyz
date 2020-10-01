@@ -2,6 +2,7 @@
 \usetheme{Boadilla}
 \usepackage{hyperref}
 \usepackage{graphicx}
+\usepackage{fancyvrb}
 \usepackage{multicol}
 \usepackage{subfig}
 \usepackage[
@@ -45,20 +46,16 @@
 \begin{itemize}
 	\item
 		Sound waves can be modelled by air pressure variations or air molecule displacement
-	\item
-		Hearing is when our ears detect sound pressure variations
-	\item
-		Vibrates our basilar membrane by frequency component
-	\item
-		Travels up the auditory nerve for further processing (so we can recognize and enjoy speech, music, etc.)
 \end{itemize}
 }
 
 \begin{frame}
 	\frametitle{Waveforms (human pov)}
 	\begin{figure}
-	\includegraphics[height=5cm]{./1_5_tonotopic.jpg}
-		\caption{Tonotopic organization of the inner ear\footfullcite{tonotopic}}
+		\subfloat[Tonotopic organization of the inner ear\footfullcite{tonotopic}]{{\includegraphics[width=6.5cm]{./1_5_tonotopic.jpg} }}
+		\hspace{0.2em}
+		\subfloat[Ascending auditory pathways \footfullcite{auditorypathway}]{{\includegraphics[width=5cm]{./1_7_auditory_pathway.jpg} }}
+		\caption{Human auditory neural network}
 	\end{figure}
 \end{frame}
 
@@ -68,21 +65,6 @@
 		Hearing is when our ears detect sound pressure variations
 	\item
 		Vibrates our basilar membrane by frequency component
-	\item
-		Travels up the auditory nerve for further processing (so we can recognize and enjoy speech, music, etc.)
-\end{itemize}
-}
-
-\begin{frame}
-	\frametitle{Waveforms (human pov)}
-	\begin{figure}
-	\includegraphics[height=5.5cm]{./1_7_auditory_pathway.jpg}
-		\caption{Ascending auditory pathways \footfullcite{auditorypathway}}
-	\end{figure}
-\end{frame}
-
-\note{
-\begin{itemize}
 	\item
 		Travels up the auditory nerve for further processing (so we can recognize and enjoy speech, music, etc.)
 	\item
@@ -92,97 +74,74 @@
 
 \begin{frame}
 	\frametitle{Waveforms (digital pov)}
-	\ \\
-	Microphones are transducers -- convert sound pressure variations into an analog electric signal
-
 	\begin{figure}
-	\includegraphics[height=5cm]{./2_transducer.png}
-		\caption{How a microphone works\footfullcite{shuremic}}
-	\end{figure}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Waveforms (digital pov)}
-	\ \\
-	Other electronic elements convert the analog signal to a digital signal through PCM.
-	\begin{figure}
-		\subfloat[Analog to digital]{{\includegraphics[width=5cm]{./3_adc_quantize.jpg} }}
+		\subfloat[Microphone/transducer\footfullcite{shuremic}]{{\includegraphics[height=3.5cm]{./2_transducer.png} }}
 		\hspace{0.2em}
-		\subfloat[Digital to analog]{{\includegraphics[width=5cm]{./3_dac_reverse.jpg} }}
-		\caption{Analog to digital and back\footfullcite{l2p}}
+		\subfloat[Analog to digital\footfullcite{l2p}]{{\includegraphics[height=3.5cm]{./3_adc_quantize.jpg} }}
+		\caption{Sound pressure wave to analog signal to digital signal}
 	\end{figure}
 \end{frame}
 
 \note{
 \begin{itemize}
 	\item
-		Nyquist-Shannon sampling theorem -- the fundamental bridge between continuous-time and discrete time
+		Microphones are transducers -- convert sound pressure variations into an analog electric signal
 	\item
-		Continuous time is infinite -- unfeasible to represent digitally, so digital audio is sampled. Continuous in both time and range of values, so it must be sampled and quantized with pulse code modulation
-	\item
-		Sample rate -- common ones are 44100Hz, 48000Hz
-	\item
-		Quantization -- common ones 16-bit integers, or floats (often normalized between -1.0 and 1.0)
+		Analog signals are continuous in both time and range of values, so it must be sampled and quantized (pulse code modulation), Nyquist-Shannon sampling theorem -- the fundamental bridge between continuous-time and discrete time
 	\item
 		Process is done in reverse for taking this digital signal and outputting it through speakers/headphones
+	\item
+		Wave to waveform
 \end{itemize}
 }
 
 \begin{frame}[fragile]
-	\frametitle{How meaningful is the digital waveform?}
-	\begin{small}
-	\begin{verbatim}
-		>> disp(x(50:128));
-		    0.0609
-		    0.0456
-		    0.0326
-		    0.0375
-		   -0.0002
-		   -0.0143
-		   -0.0188
-		   -0.1061
-		   -0.1825
-		   -0.1394
-		   -0.0511
-		   ...
-	\end{verbatim}
-	\end{small}
-	``Yo check out this cool bass riff I wrote, it goes 0.0609, 0.0456, 0.0326, ...''
-\end{frame}
-
-\begin{frame}
 	\frametitle{Waveform domain}
-	CLICK TO PLAY $\rightarrow$ \href{run:./funkybass.wav}{Cool bass riff} \footfullcite{hotnfun}\
 	\begin{figure}
-	\includegraphics[height=5cm]{./4_funkybass.png}
-		\caption{Cool bass riff waveform}
+	\includegraphics[height=4.5cm]{./4_funkybass.png}
+		\caption{Bass riff waveform \href{run:./funkybass.wav}{(CLICK2PLAY)} \footfullcite{hotnfun}}
 	\end{figure}
+	\vspace{-1em}
+	How meaningful is it?\\
+	{\small{\Verb#>> disp(x(50:128)); 0.0609, 0.0456, 0.0326, 0.0375, ...#}}
 \end{frame}
 
 \begin{frame}
 	\frametitle{Frequency domain}
+	\vspace{-1em}
 	\begin{figure}
-	\includegraphics[height=6cm]{./5_funkybass_spectrogram.png}
-		\caption{Cool bass riff spectrogram}
+	\includegraphics[height=4cm]{./5_funkybass_spectrogram.png}
 	\end{figure}
+	\vspace{-1em}
+	\textbf{\textcolor{red}{Cons}}
+	Often in the spectral domain, phase information is omitted\footfullcite{phase}, sacrificing timbre quality in the recreation (\href{run:./original_phase.wav}{good} vs. \href{run:./random_phase.wav}{bad})\\
+	\textbf{\textcolor{ao(english)}{Pros}}
+	Dimensionality of recognizeable audio features (notes, melodies, utterances) is more compact \footfullcite{samplernn}
 \end{frame}
 
 \note{
 	\begin{itemize}
 		\item
-			The frequency domain and the DFT, time-frequency resolution. Take DFT of the whole funky bass riff? Meaningless, we lost 8 seconds of information. It's just a smear of audio.
+			We discard the phase component when analyzing audio, because it is not informative for most of the things we could be interested in. phase is very important because it meaningfully affects our perception \textbf{when generating sound}. phase hard because
+			\begin{itemize}
+			\item
+				it is an angle between 0 and 2pi and wraps around (princarg)
+			\item
+				it becomes effectively random as the magnitude tends towards 0, because noise starts to dominate;
+			\item
+				absolute phase is less meaningful, but relative phase differences over time matter perceptually.
+			\end{itemize}
 		\item
-			The STFT -- chunk audio by overlapping time slices, FFT of each slice. show frequency at smaller increments than ``whole song'' - spectrogram above is demo of STFT
+			Counterpoint is that modeling the waveform domain implicitly preserves phase information, perceptually important
 		\item
-			Note that this is much more meaningful to humans than the waveform.
+			Counterpoint is that the waveform needs hundres of thousands of samples for simple audio features -- from the sampleRNN paper, one of the primary methods i'll be introducing today
 	\end{itemize}
 }
 
 \begin{frame}[fragile]
 	\frametitle{Symbolic domain}
-	\ \\
 	The highest human level of representation for musical structure\\
-	e.g. cool bass riff bass tab \footfullcite{ultimateguitar}
+	e.g. bass tab \footfullcite{ultimateguitar}
 	\begin{small}
 		\begin{verbatim}
 		G|--------------------------|
@@ -191,56 +150,42 @@
 		E|--------------------------|
 		\end{verbatim}
 	\end{small}
+	\begin{quote}
+	Automatic music generation dates back to more than half a century. A prominent approach is to generate music symbolically in the form of a piano roll, which specifies the timing, pitch, velocity, and instrument of each note to be played. This has led to impressive results like producing Bach chorals, polyphonic music with multiple instruments, as well as minute long musical pieces.\\
+	But symbolic generators have limitations -- they cannot capture human voices or many of the more subtle timbres, dynamics, and expressivity that are essential to music.\footfullcite{jukebox1}
+	\end{quote}
 \end{frame}
 
 \note{
 	\begin{itemize}
+		\item
+			Algorithmic music composition -- MUMT 306 material
 		\item
 			I'm not even aware of how many of these exist. Tabs, sheet music, etc.
 	\end{itemize}
 }
 
 \begin{frame}
-	\frametitle{Waveform vs. frequency domain}
-	\begin{itemize}
-		\item[] \textbf{\textcolor{ao(english)}{Pros}}
-		\item Often in the spectral domain, phase information is lost (or omitted)\footfullcite{phase}. Modeling the waveform domain implicitly preserves phase information, leading to natural timbres and dynamics \textbf{in the generative domain}.
-	\end{itemize}
-	\vspace{1em}
-	\begin{itemize}
-		\item[] \textbf{\textcolor{red}{Cons}}
-		\item Dimensionality of recognizeable audio features (notes, melodies, utterances) is \textit{huge} in the waveform domain (48,000 samples for a short guitar pluck). One of the reasons why higher-level representations are useful (but suffer from imperfect re-translation)\footfullcite{samplernn}.
-	\end{itemize}
+	\frametitle{Interlude: machine learning in acoustics}
+	\begin{figure}
+	\includegraphics[height=4cm]{./6_5_ml_acoustics.jpg}
+		\caption{Analytic physical models (lower left) give basic insights about physical systems. More sophisticated models, reliant on computational methods (lower right), can model more complex phenomena. Whereas physical models are reliant on rules, which are updated by physical evidence (data), ML is purely data-driven (upper left). By augmenting ML methods with physical models to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained \footfullcite{mlacoustics}}
+	\end{figure}
 \end{frame}
 
 \note{
 	\begin{itemize}
 		\item
-			Phase source is great, check it out, good examples on how missing phase affects the timbre of a piano clip. It's a deepmind engineer and extensively cited
+			First two papers i'll discuss, purely neural audio synthesis, are from the top left. Unstructured, whacky, figure out what you can from the provided audio
 		\item
-			Second quote is from the sampleRNN paper, one of the primary methods i'll be introducing today
+			Lastly I'll mention an alternative approach, top right -- mixing our known acoustical physical models with machine learning and deep learning to train on real audio and discover optimal parameters
 	\end{itemize}
-}
-
-\begin{frame}
-	\frametitle{Waveform vs. symbolic domain}
-	\begin{quote}
-	Automatic music generation dates back to more than half a century. A prominent approach is to generate music symbolically in the form of a piano roll, which specifies the timing, pitch, velocity, and instrument of each note to be played. This has led to impressive results like producing Bach chorals, polyphonic music with multiple instruments, as well as minute long musical pieces.
-	\end{quote}
-	\vspace{1em}
-	\begin{quote}
-	But symbolic generators have limitations -- they cannot capture human voices or many of the more subtle timbres, dynamics, and expressivity that are essential to music.\footfullcite{jukebox1}
-	\end{quote}
-\end{frame}
-
-\note{
-	Algorithmic music composition -- MUMT 306 material
 }
 
 \begin{frame}
 	\frametitle{Sound synthesis -- wavetables and sinusoidal oscillators}
 	Wavetable synthesis is perhaps the oldest technique for creating sounds with computers. It involves \textbf{the storage of a single period of a periodic waveform} in a circular buffer. By varying the ``speed'' with which a read pointer is advanced through the buffer, one can achieve output waveforms of different frequencies \footfullcite{3071}.\\\ \\
-	Sound synthesis algorithms are typically described and implemented using primitive signal processing ``building blocks'' called unit generators. Create complex synthesis by combining multiple oscillators (see next page) \footfullcite{3072}, \footfullcite{3073}, \footfullcite{3074}.
+	Sound synthesis algorithms are typically described and implemented using primitive signal processing ``building blocks'' called \textbf{unit generators}. Create complex synthesis by combining multiple oscillators (see next page) \footfullcite{3072}, \footfullcite{3073}, \footfullcite{3074}.
 \end{frame}
 
 \note{
@@ -271,33 +216,17 @@
 	\end{figure}
 \end{frame}
 
-\begin{frame}
-	\frametitle{Complex tones from simple ones}
-	\begin{quote}
-		 In 1967, Chowning realized that complex sounds could be generated using only two oscillators when the output of one oscillator is connected to the frequency input of a second oscillator. Essentially, the first oscillator generates a pure tone that modulates the frequency of the second oscillator in a way that produces a complex tone, like a string vibrating.\footfullcite{complextone}
-	\end{quote}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Machine learning and computational acoustics}
-	\begin{figure}
-	\includegraphics[height=4cm]{./6_5_ml_acoustics.jpg}
-		\caption{Analytic physical models (lower left) give basic insights about physical systems. More sophisticated models, reliant on computational methods (lower right), can model more complex phenomena. Whereas physical models are reliant on rules, which are updated by physical evidence (data), ML is purely data-driven (upper left). By augmenting ML methods with physical models to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained \footfullcite{mlacoustics}}
-	\end{figure}
-\end{frame}
-
 \note{
-	\begin{itemize}
-		\item
-			First two papers i'll discuss, purely neural audio synthesis, are from the top left. Unstructured, whacky, figure out what you can from the provided audio
-		\item
-			Lastly I'll mention an alternative approach, top right -- mixing our known acoustical physical models with machine learning and deep learning to train on real audio and discover optimal parameters
-	\end{itemize}
+\begin{quote}
+	 In 1967, Chowning realized that complex sounds could be generated using only two oscillators when the output of one oscillator is connected to the frequency input of a second oscillator. Essentially, the first oscillator generates a pure tone that modulates the frequency of the second oscillator in a way that produces a complex tone, like a string vibrating.
+\end{quote}
 }
 
 \begin{frame}
 	\frametitle{Neural audio synthesis}
-	The question of generating musical signals has been extensively studied over the past decades. Most of the previous approaches on this topic were defined in the spectral domain as a complex set of relatively simple manipulation (subtractive, additive or modulation synthesis). However, several recent breakthroughs in audio waveform generative models based on neural networks (Oord, 2016) have obtained astounding results in speech synthesis both qualitatively and quantitatively (Mehri, 2016). These systems rely on learning the structure of audio waveforms directly from a given set of audio files, without computing a spectral transform and in an unsupervised manner.\footfullcite{intro1}
+	\begin{quote}
+		The question of generating musical signals has been extensively studied over the past decades. Most of the previous approaches on this topic were \textbf{defined in the spectral domain as a complex set of relatively simple manipulation (subtractive, additive or modulation synthesis)}. However, several recent breakthroughs in audio waveform generative models based on neural networks (Oord, 2016 \textbf{WaveNet}) have obtained astounding results in speech synthesis both qualitatively and quantitatively (Mehri, 2016 \textbf{SampleRNN}). These systems rely on learning the structure of audio waveforms directly from a given set of audio files, without computing a spectral transform and in an unsupervised manner.\footfullcite{intro1}
+	\end{quote}
 \end{frame}
 
 \note{
@@ -336,8 +265,7 @@
 	A neural network (or deep learning, from the ``depth of layers of neurons'') is a form of machine learning\\\ \\
 	Single neuron: given many inputs, produce a single output -- like a neuron in the human brain\\\ \\
 	Network of neurons: complex input travels up a chain of firing neurons to produce a complex output\\\ \\
-	E.g. given the waveform ``0.0609, 0.305, -0.434'', is this a cool bass riff?\\
-	Using enough computational power, a neural network can create a complex, non-linear transform of input signals ``x[n]'' to outputs ``$f(x[n])$ = yes this is a cool bass riff'' or ``no this isn't''.
+	E.g. we're generating a  waveform. Given ``0.0609, 0.305, -0.434'', what's the best next value to pick? $y[n] = f(x[n])$, some complex non-linear function based on waveforms $x[n]$ seen in training.
 \end{frame}
 
 \note{
@@ -581,7 +509,7 @@
 	\frametitle{Recall}
 	\begin{figure}
 	\includegraphics[height=4cm]{./6_5_ml_acoustics.jpg}
-		\caption{Analytic physical models (lower left) give basic insights about physical systems. More sophisticated models, reliant on computational methods (lower right), can model more complex phenomena. Whereas physical models are reliant on rules, which are updated by physical evidence (data), ML is purely data-driven (upper left). By augmenting ML methods with physical models to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained \footfullcite{mlacoustics}}
+		\caption{By augmenting ML methods with physical models to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained \footfullcite{mlacoustics}}
 	\end{figure}
 \end{frame}
 
