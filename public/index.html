@@ -6,10 +6,10 @@
     <title>1000 sharks - an AI music experience</title>
     <link rel="stylesheet" href="style.css">
   </head>
-  <body>
+  <body id="index">
     <div class="navbar">
       <a href="./">MUMT 618 report</a>
-      <a href="./demo">1000sharks demo</a>
+      <a href="./demo.html">1000sharks demo</a>
     </div>
 
     <h1>1000 sharks</h1>
@@ -477,6 +477,33 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     <br>
     <h4>Overfitting to a single song, Make Total Destroy</h4>
     Since SampleRNN was trained on 6 different albums, let's narrow down why it wasn't able to create Periphery's characteristic sound by overfitting specifically on the song shown above.
+    <br>
+    <br>
+    After creating a test dataset with only the song Make Total Destroy and training on it for 100 epochs, the model reaches the following loss and accuracy:
+    <pre>
+    Epoch: 91/100, Step: 118/125, Loss: 0.867, Accuracy: 74.538, (0.246 sec/step)
+    Epoch: 91/100, Step: 119/125, Loss: 0.864, Accuracy: 74.616, (0.255 sec/step)
+    Epoch: 91/100, Step: 120/125, Loss: 0.861, Accuracy: 74.705, (0.247 sec/step)
+    Epoch: 91/100, Step: 121/125, Loss: 0.857, Accuracy: 74.797, (0.246 sec/step)
+    Epoch: 91/100, Step: 122/125, Loss: 0.854, Accuracy: 74.893, (0.246 sec/step)
+    Epoch: 91/100, Step: 123/125, Loss: 0.850, Accuracy: 74.985, (0.251 sec/step)
+    Epoch: 91/100, Step: 124/125, Loss: 0.847, Accuracy: 75.076, (0.246 sec/step)
+    </pre>
+    Generated audio from epoch 91:
+    <br>
+    Clip 1:
+    <br>
+    <audio controls>
+	    <source src="maketotaldestroy_1.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    Clip 2:
+    <br>
+    <audio controls>
+	    <source src="maketotaldestroy_2.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    These don't sound anything like music.
 
     <h3>Generated audio visualization</h3>
     The above clips show collections of realistic note onsets. One of my original statements about WaveNet and SampleRNN was that they could produce music with convincing dynamics and timbre, to make us believe real humans played it. Observing various aspects of the waveform in the time and frequency domain should be useful.
@@ -566,6 +593,12 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
         └── train
     </pre>
     <h1>Experiment 2: does 2-tier SampleRNN make better music?</h1>
+    The next step is to take the SampleRNN implementation most successful for producing music - that of the dadabots - and see if we can copy their optimal music model into the PRiSM-SampleRNN repo. This is valuable work because it would be the most modern incarnation of 2-tier music-capable SampleRNN, and thus be easily installable and runnable in 2020.
+    <br>
+    <br>
+    Moreover, while transliterating the dadabots' model (based on Theano, an older machine learning library now fallen out of favor<sup><a href="#ref">citation needed bigly</a></sup>) onto the PRiSm fork (which uses Tensorflow 2), I would (ideally) learn more about the internal details of SampleRNN and demystify a little of its black-box behavior.
+    <h2>The dadabots models</h2>
+    In the dadabots GitHub repo, 
     <h1>Curating neural generated results</h1>
     An important thing to note is that the Dadabots focus heavily on curating<sup><a href="#ref">[16]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music.
     <br>
@@ -709,6 +742,93 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
       <li>flanger</li>
     </ul>
     <h1>Album art generation</h1>
+    SampleRNN, which I've shown so far, is a model for unconditional music generation. NVIDIA's StyleGAN2<sup><a href="#ref">stylegan2</a></sup> is a model for unconditional image generation. I'll use StyleGAN2 to create the fake album art for 1000sharks. Given that both are unconditional waveform generators (audio = 1D waveform with an implicit time axis, image = 2D matrix, non-temporal), the training and generation procedures are broadly similar to what has been described.
+    <h2>Image pre-preprocessing script</h2>
+    StyleGAN2 expects the training data to be square images with the same power-of-two dimension. I wrote a Python script that automatically extracts the square middle <code>dim</code> pixels of an image and saves them as png files using Pillow<sup><a href="#ref">pil</a></sup>:
+    <pre>
+    from PIL import Image, ImageOps
+
+    seq = 0
+    # dim is a user-supplied argument
+
+    for p in args.inpaths:
+        for image in os.listdir(p):
+            img = Image.open(os.path.join(p, image))
+
+            thumbnail = ImageOps.fit(
+                img,
+                (args.dim, args.dim),
+                Image.ANTIALIAS
+            )
+            thumbnail.save(os.path.join(args.outpath, '{0}.png'.format(seq)))
+            seq += 1
+    </pre>
+    I've committed this script (crop_images.py) to my fork of StyleGAN2<sup><a href="#ref">my-stylegan2-fork</a></sup>. One thing to note is that I had to run <code>conda install libwebp</code> in my Conda environment before installing Pillow to support the webp image format.
+    <br>
+    <br>
+    Early on this page I mentioned vague "difficulties" when relying on older machine learning libraries. I encountered many of these with StyleGAN2:
+    <ul>
+      <li>I needed to install Python 3.7 which is the last version of Python that still supports Tensorflow 1.15 (an older version required for StyleGAN2)</li>
+      <li>I had to symlink several CUDA libraries to the 10.0 versions expected by Tensorflow 1.15:
+        <pre>
+        ln -snf /usr/lib64/libcudart.so.10.2.89 /usr/lib64/libcudart.so.10.0
+        ln -snf /usr/lib64/libcublas.so.10.2.89 /usr/lib64/libcublas.so.10.0
+        ln -snf /usr/lib64/libcufft.so.10.1.2.89 /usr/lib64/libcufft.so.10.0
+        ln -snf /usr/lib64/libcublas.so.10.2.2.89 /usr/lib64/libcublas.so.10.0
+        ln -snf /usr/lib64/libcusparse.so.10.3.1.89 /usr/lib64/libcusparse.so.10.0
+        ln -snf /usr/lib64/libcurand.so.10.1.2.89 /usr/lib64/libcurand.so.10.0
+        ln -snf /usr/lib64/libcusolver.so.10.3.0.89 /usr/lib64/libcusolver.so.10.0
+        </pre>
+      </li>
+      <li>After encountering several resource exhaustion crashes, I had to allow GPU memory growth, similar to the modification I had to make to SampleRNN: <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code> </li>
+    </ul>
+    <h2>Preprocessing, training, and generation commands</h2>
+    The training data consists of shark images (saved from a Google image search), and heavy metal album covers (saved from the following article<sup><a href="#ref">article https://www.loudersound.com/features/the-50-best-death-metal-albums-ever</a></sup>.
+    <br>
+    <br>
+    After downloading these to a directory, I ran the following commands:
+    <pre>
+    # create 256x256 middle cropped images from sharks and album covers
+    $ python crop_images.py --dim=256 ./output-images/ ./shark-images/ ./metal-album-covers/
+
+    # preprocess cleaned cropped images using stylegan2's own tool
+    $ python dataset_tool.py create_from_images datasets/1000sharks/ ./output-images/
+
+    # train for config-e and kimg=1000
+    $ python run_training.py --data-dir=./datasets/ --dataset=1000sharks --config=config-e --total-kimg=1000
+
+    # generate 1000 images, randomly seeded, for curation
+    $ python run_generator.py generate-images --seeds=0-999 --truncation-psi=1.0   --network=results/00008-stylegan2-1000sharks-1gpu-config-e/network-final.pkl
+    </pre>
+    I chose the training parameters <code>config-e</code> (the second-best configuration - config-f is the best configuration in StyleGAN2 but is a larger neural network that's much slower to train - these are explained <a href="link-to-think">TODO HERE</a>), with kimg=1000 (this is similar to the epochs of SampleRNN, in that more is probably better and increases the training time).
+    <br>
+    <br>
+    After 31 hours of training, the model was done:
+    <pre>
+    tick 118   kimg 951.7    lod 0.00  minibatch 32   time 1d 06h 10m   sec/tick 845.5   sec/kimg 104.85  maintenance 0.0    gpumem 5.0
+    tick 119   kimg 959.7    lod 0.00  minibatch 32   time 1d 06h 24m   sec/tick 845.2   sec/kimg 104.81  maintenance 0.0    gpumem 5.0
+    tick 120   kimg 967.8    lod 0.00  minibatch 32   time 1d 06h 38m   sec/tick 844.9   sec/kimg 104.78  maintenance 0.0    gpumem 5.0
+    network-snapshot-000967        time 11m 39s      fid50k 192.4708
+    tick 121   kimg 975.9    lod 0.00  minibatch 32   time 1d 07h 04m   sec/tick 844.7   sec/kimg 104.76  maintenance 712.7  gpumem 5.0
+    tick 122   kimg 983.9    lod 0.00  minibatch 32   time 1d 07h 18m   sec/tick 845.8   sec/kimg 104.89  maintenance 0.0    gpumem 5.0
+    tick 123   kimg 992.0    lod 0.00  minibatch 32   time 1d 07h 32m   sec/tick 845.7   sec/kimg 104.87  maintenance 0.0    gpumem 5.0
+    tick 124   kimg 1000.1   lod 0.00  minibatch 32   time 1d 07h 47m   sec/tick 845.6   sec/kimg 104.87  maintenance 0.0    gpumem 5.0
+    network-snapshot-001000        time 11m 41s      fid50k 195.7975
+    dnnlib: Finished training.training_loop.training_loop() in 1d 07h 59m.
+    </pre>
+    The logs to stdout are similar to SampleRNN (kimg = epoch, fid50k = accuracy measure where lower is better<a href="otherthing">https://machinelearningmastery.com/how-to-implement-the-frechet-inception-distance-fid-from-scratch/</a>).
+    <h2>Curated album art</h2>
+    There are 9 results I liked the most and included in the project:
+    <br>
+    <img src="curated_album_art_1.png"/>
+    <img src="curated_album_art_2.png"/>
+    <img src="curated_album_art_3.png"/>
+    <img src="curated_album_art_4.png"/>
+    <img src="curated_album_art_5.png"/>
+    <img src="curated_album_art_6.png"/>
+    <img src="curated_album_art_7.png"/>
+    <img src="curated_album_art_8.png"/>
+    <img src="curated_album_art_9.png"/>
     <h1>Results & conclusion</h1>
 
     <h1 id="ref">References</h2>

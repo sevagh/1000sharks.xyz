@@ -1,63 +1,28 @@
-Example plain HTML site using GitLab Pages.
+Plain HTML website published to https://1000sharks.xyz with GitLab pages - for MUMT 618 final project, Fall 2020.
 
-Learn more about GitLab Pages at https://pages.gitlab.io and the official
-documentation https://docs.gitlab.com/ce/user/project/pages/.
+# 1000 sharks
 
----
+1000 sharks is my exploration of machine learning with the intention of creating a fake music artist website.
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+It uses SampleRNN for music generation, and StyleGAN2 for album art generation.
 
-- [GitLab CI](#gitlab-ci)
-- [GitLab User or Group Pages](#gitlab-user-or-group-pages)
-- [Did you fork this project?](#did-you-fork-this-project)
-- [Troubleshooting](#troubleshooting)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-## GitLab CI
-
-This project's static Pages are built by [GitLab CI][ci], following the steps
-defined in [`.gitlab-ci.yml`](.gitlab-ci.yml):
+### Project organization
 
 ```
-image: alpine:latest
-
-pages:
-  stage: deploy
-  script:
-  - echo 'Nothing to do...'
-  artifacts:
-    paths:
-    - public
-  only:
-  - master
+$ tree -L 1
+.
+├── LICENSE             # MIT license
+├── paper-presentation  # latex files for presentation on neural audio synthesis
+├── public              # website files for https://1000sharks.xyz
+├── README.md           # this readme describing the project breakdown
+├── samplernn-scripts   # scripts for reproducing my SampleRNN results
+└── stylegan2-scripts   # scripts for reproducing my StyleGAN2 results
 ```
 
-The above example expects to put all your HTML files in the `public/` directory.
+### ML models
 
-## GitLab User or Group Pages
+The machine learning models used are:
+* https://github.com/sevagh/prism-samplernn for music generation
+* https://github.com/sevagh/stylegan2 for album art generation
 
-To use this project as your user/group website, you will need one additional
-step: just rename your project to `namespace.gitlab.io`, where `namespace` is
-your `username` or `groupname`. This can be done by navigating to your
-project's **Settings**.
-
-Read more about [user/group Pages][userpages] and [project Pages][projpages].
-
-## Did you fork this project?
-
-If you forked this project for your own use, please go to your project's
-**Settings** and remove the forking relationship, which won't be necessary
-unless you want to contribute back to the upstream project.
-
-## Troubleshooting
-
-1. CSS is missing! That means that you have wrongly set up the CSS URL in your
-   HTML files. Have a look at the [index.html] for an example.
-
-[ci]: https://about.gitlab.com/gitlab-ci/
-[index.html]: https://gitlab.com/pages/plain-html/blob/master/public/index.html
-[userpages]: https://docs.gitlab.com/ce/user/project/pages/introduction.html#user-or-group-pages
-[projpages]: https://docs.gitlab.com/ce/user/project/pages/introduction.html#project-pages
+N.b. that the links above are my own forks of the original models, but I have only made some very minor quality-of-life commits (and no other significant modifications from the forks).
