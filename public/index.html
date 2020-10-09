@@ -259,15 +259,23 @@
             print(transformed)
             restored = batch_to_time(transformed, dilation)
             print(restored)
-    
-            e = encoded.eval()
-            t = transformed.eval()
-            r = restored.eval()
-    
-            print(e[0][:16])
-            print(t[0][:4])
-            print(t[0][:1])
     </pre>
+    Output:
+    <pre>
+    DILATION: 1
+    Tensor("one_hot_encode/Reshape:0", shape=(1, 1024, 256), dtype=float32)
+    Tensor("time_to_batch/Reshape_1:0", shape=(1, 1024, 256), dtype=float32)
+    Tensor("batch_to_time/Reshape_1:0", shape=(1, 1024, 256), dtype=float32)
+    DILATION: 4
+    Tensor("one_hot_encode/Reshape:0", shape=(1, 1024, 256), dtype=float32)
+    Tensor("time_to_batch_1/Reshape_1:0", shape=(4, 256, 256), dtype=float32)
+    Tensor("batch_to_time_1/Reshape_1:0", shape=(1, 1024, 256), dtype=float32)
+    DILATION: 16
+    Tensor("one_hot_encode/Reshape:0", shape=(1, 1024, 256), dtype=float32)
+    Tensor("time_to_batch_2/Reshape_1:0", shape=(16, 64, 256), dtype=float32)
+    Tensor("batch_to_time_2/Reshape_1:0", shape=(1, 1024, 256), dtype=float32)
+    </pre>
+    These functions are performing essentially an upsampling of the raw samples to frame sizes of 1 (same as before), 4 (4x sparser), 16 (16x sparser). The above is the crux of the intuition of how WaveNet uses dilations for wider/coarser temporal patterns.
     <br>
     <br>
     In the diagram we saw that after the first convolution is applied to the input, there is an iterative application of layers of dilated convolutions, with <code>tanh</code> and <code>σ</code> inside. Let's take a closer look at the internal details of the causal convolution layer with holes:

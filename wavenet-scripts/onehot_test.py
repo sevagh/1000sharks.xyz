@@ -2,12 +2,16 @@ import tensorflow as tf
 import scipy
 from scipy.io.wavfile import read as wav_read
 import librosa
+import numpy
 import sys
 import matplotlib.pyplot as plt
 from datetime import datetime
 
 quantization_channels=2**8
 batch_size = 1
+
+
+numpy.set_printoptions(threshold=sys.maxsize)
 
 
 def mu_law_encode(audio):
@@ -58,12 +62,21 @@ def batch_to_time(value, dilation, name=None):
                           [tf.div(shape[0], dilation), -1, shape[2]])
 
 if __name__ == '__main__':
-    x, _ = librosa.load(sys.argv[1], mono=True) 
+    #x, _ = librosa.load(sys.argv[1], mono=True) 
 
     # keep audio small
+    #print(x.shape)
+    #x = x[:1024]
+    #print(x.shape)
+
+    x = numpy.linspace(-0.9,0.9,num=16,dtype=numpy.float32)
+    print(x)
     print(x.shape)
-    x = x[:1024]
+    for i in range(63):
+        x = numpy.concatenate((x, numpy.linspace(-0.9,0.9,num=16,dtype=numpy.float32)))
+
     print(x.shape)
+    print(x)
 
     mu_law_encoded = mu_law_encode(x)
     encoded = _one_hot(mu_law_encoded)
@@ -83,11 +96,11 @@ if __name__ == '__main__':
             print(transformed)
             restored = batch_to_time(transformed, dilation)
             print(restored)
-
-            e = encoded.eval()
-            t = transformed.eval()
-            r = restored.eval()
-
-            print(e[0][:16])
-            print(t[0][:4])
-            print(t[0][:1])
+    
+            #e = encoded.eval()
+            #t = transformed.eval()
+            #r = restored.eval()
+    
+            #print(e)
+            #print(t)
+            #print(r)
