@@ -47,6 +47,294 @@
     </ol>
     To supplement the illusion of a "real" music artist, I also want to generate album art using additional AI techniques; as these are not directly related to musical acoustics, they'll occupy a small section at the bottom of this report.
     </p>
+    <h1>Deeper dives</h1>
+    Despite the "black box" nature of WaveNet and SampleRNN, we can do an examination of the models (including training and generation steps) to get a better sense of:
+    <ol>
+	    <li>Input data and preprocessing - how are the training waveforms represented?</li>
+	    <li>The model/neural network itself - what are WaveNet and SampleRNN computing?</li>
+	    <li>Loss function - how do WaveNet/SampleRNN know that one set of parameters is better than the other? What defines the "correct" output of a waveform?</li>
+	    <li>Generation - after training a model with low loss, how do WaveNet and SampleRNN use the trained model to generate brand new waveforms of audio?</li>
+    </ol>
+    <h2>WaveNet</h2>
+    <h3>Preprocessing</h3>
+    In WaveNet, the waveform amplitudes (a 1D array of floats, in their raw form) are mu-law encoded, and then one-hot encoded<sup><a href="#ref">https://www.tensorflow.org/api_docs/python/tf/one_hot</a></sup>.
+    <br>
+    <br>
+    I extracted out the preprocessing/encoding steps into "onehot_test.py" to run them isolated from the larger network:
+    <pre>
+    import tensorflow as tf
+    import scipy
+    from scipy.io.wavfile import read as wav_read
+    import librosa
+    import sys
+    import matplotlib.pyplot as plt
+    from datetime import datetime
+    
+    quantization_channels=2**8
+    batch_size = 1
+    
+    
+    def mu_law_encode(audio):
+        '''Quantizes waveform amplitudes.'''
+        with tf.name_scope('encode'):
+            mu = tf.to_float(quantization_channels - 1)
+            # Perform mu-law companding transformation (ITU-T, 1988).
+            # Minimum operation is here to deal with rare large amplitudes caused
+            # by resampling.
+            safe_audio_abs = tf.minimum(tf.abs(audio), 1.0)
+            magnitude = tf.log1p(mu * safe_audio_abs) / tf.log1p(mu)
+            signal = tf.sign(audio) * magnitude
+            # Quantize signal to the specified number of levels.
+            return tf.to_int32((signal + 1) / 2 * mu + 0.5)
+    
+    
+    def _one_hot(input_batch):
+        '''One-hot encodes the waveform amplitudes.
+        This allows the definition of the network as a categorical distribution
+        over a finite set of possible amplitudes.
+        '''
+        with tf.name_scope('one_hot_encode'):
+            encoded = tf.one_hot(
+                input_batch,
+                depth=quantization_channels,
+                dtype=tf.float32)
+            shape = [1, -1, quantization_channels]
+            encoded = tf.reshape(encoded, shape)
+        return encoded
+    
+    
+    if __name__ == '__main__':
+        x, _ = librosa.load(sys.argv[1], mono=True) 
+    
+        mu_law_encoded = mu_law_encode(x)
+        encoded = _one_hot(mu_law_encoded)
+    
+        with tf.Session() as sess:
+            encoded_eval = encoded.eval()
+            mu_law_eval = mu_law_encoded.eval()
+            for i in range(x.shape[0]):
+                print('waveform value: {0}'.format(x[i]))
+                print('mu-law encoded value: {0}'.format(mu_law_eval[i]))
+                print('one-hot encoded values: {0}'.format(encoded_eval[0][i]))
+    </pre>
+    <code>quantization_channels</code> is one of the arguments to the entire WaveNet model - I set it at the default, 256. The outputs when loaded on an example waveform are instructive:
+    <pre>
+    waveform value: 0.0006352805648930371
+    mu-law encoded value: 131
+    one-hot encoded values: [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+     0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+    </pre>
+    The purpose of one-hot encoding is to transform a number (in this case, the mu-law encoded value, which is by design clamped to a range of 256) into a categorical distribution - a value of 131 is <code>0*0 + 0*1 + 0*2 + ... + 1*131 + 0*132 + ...</code>.
+    <br>
+    <br>
+    Using the categorical distribution, one can answer the question "how many times does the value 131 apear", and start getting ideas about what the most likely values are from the training waveforms. Interestingly, since waveforms are already numbers, they shouldn't need to be one-hot encoded - the typical use is to map categories, e.g. "this image is a cat, this image is a dog", to numbers. WaveNet takes an argument that allows it to use the mu-law encoded integers directly in training.
+    <h3>Training layers - stack of dilated convolutions</h3>
+    After the input data has been encoded in this form, the WaveNet model then feeds it into its k layers of stacked dilated causal convolutions. That's where the "meat" of the model is. It gets complicated here so I'll try to intersperse explanations from different sources.
+    <br>
+    <br>
+    The following diagram from the paper describes the layers:
+    <br>
+    <img src="wavenet_conv_layers.png" width=650px/>
+    <br>
+    Also, recall the WaveNet diagram, and WaveNet using dilated convolutions to represent longer temporal relations than jthe first 1-sample/consecutive sample layer:
+    <br>
+    <img src="7_wavenet_annot.png" width=500px/>
+    <br>
+    Let's dissect it piece by piece.
+    <h4>The first causal convolution</h4>
+    In the code (taken from wavenet/model.py):
+    <pre>
+    def causal_conv(value, filter_, dilation, name='causal_conv'):
+        with tf.name_scope(name):
+            filter_width = tf.shape(filter_)[0]
+            if dilation > 1:
+                transformed = time_to_batch(value, dilation)
+                conv = tf.nn.conv1d(transformed, filter_, stride=1,
+                                    padding='VALID')
+                restored = batch_to_time(conv, dilation)
+            else:
+                restored = tf.nn.conv1d(value, filter_, stride=1, padding='VALID')
+            # Remove excess elements at the end.
+            out_width = tf.shape(value)[1] - (filter_width - 1) * dilation
+            result = tf.slice(restored,
+                              [0, 0, 0],
+                              [-1, out_width, -1])
+            return result
+
+
+    def _create_causal_layer(self, input_batch):
+        '''Creates a single causal convolution layer.
+    
+        The layer can change the number of channels.
+        '''
+        with tf.name_scope('causal_layer'):
+            weights_filter = self.variables['causal_layer']['filter']
+            return causal_conv(input_batch, weights_filter, 1)
+    </pre>
+    As we saw in the diagram, the first transform applied to the input is a causal convolution (no holes/dilations - this is for immediately consecutive samples):
+    <pre>
+    # input_batch is the mu-law + one-hot encoded waveform we saw above
+    current_layer = input_batch
+    current_layer = self._create_causal_layer(current_layer)
+    </pre>
+    Note that the function <code>causal_conv</code> takes an argument of <code>dilation=1</code>, meaning undilated or consecutive samples.
+    <br>
+    <br>
+    The actual convolution is in the Tensorflow function <code>tf.nn.conv1d</code><sup><a href="#ref">https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/nn/conv1d</a></sup>. The arguments are the input waveform (after the preprocessing), and a weights filter:
+    <pre>
+    weights_filter = self.variables['causal_layer']['filter']
+    tf.nn.conv1d(input_batch, weights_filter, stride=1, padding='VALID')
+    </pre>
+    What exactly is this <code>weights_filter</code> that we are convolving the input with? It's constructed in the WaveNet model constructor:
+    <pre>
+    filter_width = 2  # Convolutions just use 2 samples.
+
+    filter_width: The samples that are included in each convolution,
+        after dilating.
+
+    '''Create a convolution filter variable with the specified name and shape,
+    and initialize it using Xavier initialition.'''
+    </pre>
+    So we're convolving the input waveform in 1D using a filter size of 2 (i.e. 2 consecutive samples) to build the first sample-to-sample relationship of the input waveform in the model. We can see it clearly in the diagram below, showing 2 consecutive blue (input) samples being passed through the first convolution layer:
+    <br>
+    <img src="wavenet_conv_layers2.png", width=600px/>
+
+    <h4>Stack of dilated convolution layers</h4>
+    Afterwards, as in the diagram, there's an iterative layer of dilated convolutions that feed into each other:
+    <pre>
+    # Add all defined dilation layers.
+    with tf.name_scope('dilated_stack'):
+        for layer_index, dilation in enumerate(self.dilations):
+            with tf.name_scope('layer{}'.format(layer_index)):
+                output, current_layer = self._create_dilation_layer(
+                    current_layer, layer_index, dilation,
+                    global_condition_batch, output_width)
+                outputs.append(output)
+    </pre>
+    We saw code earlier for the creation of dilated convolutions. In the WaveNet implementation studied, they don't use the <code>dilations</code> parameter of the conv1d function, but instead use their own pre- and post- dilation steps:
+    <pre>
+    def time_to_batch(value, dilation, name=None):
+        with tf.name_scope('time_to_batch'):
+            shape = tf.shape(value)
+            pad_elements = dilation - 1 - (shape[1] + dilation - 1) % dilation
+            padded = tf.pad(value, [[0, 0], [0, pad_elements], [0, 0]])
+            reshaped = tf.reshape(padded, [-1, dilation, shape[2]])
+            transposed = tf.transpose(reshaped, perm=[1, 0, 2])
+            return tf.reshape(transposed, [shape[0] * dilation, -1, shape[2]])
+    
+    
+    def batch_to_time(value, dilation, name=None):
+        with tf.name_scope('batch_to_time'):
+            shape = tf.shape(value)
+            prepared = tf.reshape(value, [dilation, -1, shape[2]])
+            transposed = tf.transpose(prepared, perm=[1, 0, 2])
+            return tf.reshape(transposed,
+                              [tf.div(shape[0], dilation), -1, shape[2]])
+    
+    if dilation > 1:
+        transformed = time_to_batch(value, dilation)
+        conv = tf.nn.conv1d(transformed, filter_, stride=1,
+                            padding='VALID')
+        restored = batch_to_time(conv, dilation)
+    </pre>
+    With a simple modification to the earlier used onehot_test.py, we can see what these functions do:
+    <pre>
+    mu_law_encoded = mu_law_encode(x)
+    encoded = _one_hot(mu_law_encoded)
+    
+    with tf.Session() as sess:
+        for dilation in [1, 4, 16]:
+            print('DILATION: {0}'.format(dilation))
+            print(encoded)
+            transformed = time_to_batch(encoded, dilation)
+            print(transformed)
+            restored = batch_to_time(transformed, dilation)
+            print(restored)
+    
+            e = encoded.eval()
+            t = transformed.eval()
+            r = restored.eval()
+    
+            print(e[0][:16])
+            print(t[0][:4])
+            print(t[0][:1])
+    </pre>
+    <br>
+    <br>
+    In the diagram we saw that after the first convolution is applied to the input, there is an iterative application of layers of dilated convolutions, with <code>tanh</code> and <code>σ</code> inside. Let's take a closer look at the internal details of the causal convolution layer with holes:
+    <pre>
+    conv_filter = causal_conv(input_batch, weights_filter, dilation)
+    conv_gate = causal_conv(input_batch, weights_gate, dilation)
+    
+    out = tf.tanh(conv_filter) * tf.sigmoid(conv_gate)
+    </pre>
+    This is called a "gated activation unit". From the paper:
+    <br>
+    <br>
+    <img src="wavenet_gated_activation_unit.png", width=800px/>
+    <br>
+    This leads us back to the PixelCNN paper (recall that van der Oord, main author of WaveNet, also worked on PixelCNN):
+    <br>
+    <blockquote>
+    Another potential advantage is that PixelRNNs contain multiplicative units (in the form of the LSTM gates), which may help it to model more complex interactions and non-linearity. To amend this we replaced the rectified linear units between the masked convolutions in the original pixelCNN with the following gated activation unit
+    </blockquote>
+    It seems like the purpose of the gated activation unit is allow the convolutional neural network to create and learn higher levels of complexity to match RNNs. This is especially interesting considering that SampleRNN is similar to WaveNet but uses RNNs. If you want to read more about LSTMs, <a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/">this is a good read</a>.
+    <br>
+    <br>
+    Finally, let's take a look at the <code>self.dilations</code> variable, defined in wavenet_params.json:
+    <pre>
+    "dilations": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    </pre>
+    These represent those "wider timescale of learning" - 1 sample apart, 2, 4, etc. for coarser and higher-level patterns in the audio.
+    <br>
+    <h4>Skip connections</h4>
+    The diagram also shows skip connections. Described in the paper:
+    <blockquote>
+    Both residual (He et al., 2015) and parameterised skip connections are used throughout the network, to speed up convergence and enable training of much deeper models.
+    </blockquote>
+    Here's a simpler description of skip connections<sup><a href="#ref">https://theaisummer.com/skip-connections/</a></sup>:
+    <blockquote>
+Skip connections in deep architectures, as the name suggests, skip some layer in the neural network and feeds the output of one layer as the input to the next layers (instead of only the next one). 
+    </blockquote>
+    This helps due to the vanishing gradient problem in deep neural networks<sup><a href="#ref">https://engineering.purdue.edu/DeepLearn/pdf-kak/week7.pdf</a>, <a href="#ref">Understanding the Difficulty of Training DeepFeedforward Neural Networks</a></sup>:
+    <blockquote>
+But training deep networks can be difficult because of the vanishing gradients problem. Vanishing gradients means that the gradients of the loss become more and more muted in the beginning layers of a network as the network become increasingly deeper
+    </blockquote>
+    By using skip connections, this turns a deep network into an ensemble of relatively shallow networks (w.r.t the loss). Or, in other words, skip connections allow the neural network to compute the quality of results not only based on the previous layer (which may be far removed from the input), but by skipping backwards to previous layers closer to the input<sup><a href="#ref">“Residual Networks Behave Like Ensembles of Relatively ShallowNetworks”</a></sup>.
+    <h3>Loss function</h3>
+    How does WaveNet change its parameters during training? This is an important part of a neural network so that it knows how to improve itself - the starting parameters are generally initialized with random values, and the iterative learning process involves picking new parameters that minimize loss.
+    <br>
+    <br>
+    The loss code in WaveNet is:
+    <pre>
+    # details omitted
+    # input_data = waveform, preprocessed as we saw before
+
+    network_input = input_data
+    target_output = input_data
+
+    # create the model network and generate outputs from the network
+    raw_output = self._create_network(network_input)
+
+    prediction = raw_output
+
+    loss = tf.nn.softmax_cross_entropy_with_logits(
+        logits=prediction,
+        labels=target_output)
+
+    reduced_loss = tf.reduce_mean(loss)
+    
+    tf.summary.scalar('loss', reduced_loss)
+    </pre>
 
     <h1>Experiment setup</h1>
     A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. Most of the models have outdated dependencies. You most likely can't run something that was published in 2017, as the popular machine learning frameworks on which most papers depend (Torch, Keras, Tensorflow) are evolving at a fast pace.
@@ -593,12 +881,53 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
         └── train
     </pre>
     <h1>Experiment 2: does 2-tier SampleRNN make better music?</h1>
-    The next step is to take the SampleRNN implementation most successful for producing music - that of the dadabots - and see if we can copy their optimal music model into the PRiSM-SampleRNN repo. This is valuable work because it would be the most modern incarnation of 2-tier music-capable SampleRNN, and thus be easily installable and runnable in 2020.
+    The next step is to use the SampleRNN implementation most successful for producing music - that of the dadabots. Recall that my earlier hestitation for using the dadabots code was how old the dependencies were. As such, it was slightly trickier to get up and running than the modern Tensorflow 2 PRiSM fork.
+    <h2>Dadabots SampleRNN setup</h2>
+    The dadabots SampleRNN installation instructions<sup><a href="#ref">https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu</a></sup> are tailored to a Google Cloud Platform Ubuntu 16.04 setup with an NVIDIA V100 GPU. I need to figure out installation steps that work on my Fedora 32 desktop computer with a different GPU.
     <br>
     <br>
-    Moreover, while transliterating the dadabots' model (based on Theano, an older machine learning library now fallen out of favor<sup><a href="#ref">citation needed bigly</a></sup>) onto the PRiSm fork (which uses Tensorflow 2), I would (ideally) learn more about the internal details of SampleRNN and demystify a little of its black-box behavior.
-    <h2>The dadabots models</h2>
-    In the dadabots GitHub repo, 
+    The full install steps for a functional dadabots SampleRNN (with notes) were as follows:
+    <pre>
+    # we need python 2.7 for dadabots sampleRNN
+    # create a conda environment
+
+    $ conda create -n dadabots_SampleRNN python=2.7 anaconda
+    $ conda activate dadabots_SampleRNN
+
+    # we need Theano==1.0.0 - newer breaks
+
+    (dadabots_SampleRNN) $ conda install -c mila-udem -c mila-udem/label/pre theano==1.0.0 pygpu
+
+    # we need Lasagne (based on Theano) 0.2.dev1
+    # this command installs 0.2.dev1 correctly - suggested by https://github.com/imatge-upc/salgan/issues/29
+
+    (dadabots_SampleRNN) $ pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
+
+    # we need to create a ~/.theanorc file with some cudnn details
+    # cudnn.h is installed on my system through Fedora repos, as mentioned previously
+    # 
+    # nvcc requires an older GCC, 8.4, which I already had set up
+
+    $ cat ~/.theanorc
+    [dnn]
+    include_path = /usr/include/cuda
+
+    [global]
+    mode = FAST_RUN
+    device = cuda0
+    floatX = float32
+
+    [nvcc]
+    compiler_bindir = /home/sevagh/GCC-8.4.0/bin
+
+    # at this point, we have a working dadabots 2-tier SampleRNN model
+    # install some extra pip packages
+
+    (dadabots_SampleRNN) $ pip install graphviz pydot pydot-ng
+    </pre>
+
+    <h2>Training data preparation</h2>
+
     <h1>Curating neural generated results</h1>
     An important thing to note is that the Dadabots focus heavily on curating<sup><a href="#ref">[16]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music.
     <br>
