@@ -261,11 +261,11 @@
 }
 
 \begin{frame}
-	\frametitle{What are neural networks?}
-	A neural network (or deep learning, from the ``depth of layers of neurons'') is a form of machine learning\\\ \\
-	Single neuron: given many inputs, produce a single output -- like a neuron in the human brain\\\ \\
-	Network of neurons: complex input travels up a chain of firing neurons to produce a complex output\\\ \\
-	E.g. we're generating a  waveform. Given ``0.0609, 0.305, -0.434'', what's the best next value to pick? $y[n] = f(x[n])$, some complex non-linear function based on waveforms $x[n]$ seen in training.
+	\frametitle{Artificial neural networks}
+	\begin{figure}
+	\includegraphics[width=10cm]{./nn_intro.png}
+		\caption{Artificial neural network primer \footfullcite{comp5501}}
+	\end{figure}
 \end{frame}
 
 \note{
@@ -326,6 +326,14 @@
 			delta t1 = 2 sample timescale, etc.
 	\end{itemize}
 }
+
+\begin{frame}
+	\frametitle{WaveNet math}
+	\begin{figure}
+	\includegraphics[width=10cm]{./nn_inference.png}
+		\caption{Example of how the previous diagram maps to some equations \footfullcite{comp5502}}
+	\end{figure}
+\end{frame}
 
 \begin{frame}
 	\frametitle{WaveNet examples}

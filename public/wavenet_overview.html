@@ -26,7 +26,10 @@
     <blockquote>
 Similarly to PixelCNNs (van den Oord et al., 2016a;b), the conditional probability distribution is modelled by a stack of convolutional layers. ... the output of the model has the same time dimensionality as the input. The model outputs a categorical distribution over the next value x_t with a softmax layer and it is optimized to maximize the log-likelihood of the data w.r.t. the parameters.
     </blockquote>
-    It uses <b>dilated convolutions</b> to learn features at wider timescales than consecutive samples (e.g. 1, 2, 4, 8, 16 samples apart).
+    In other words, WaveNet is optimized to maximize the likelihood of generating an output waveform that has features and patterns which are as close as possible to the gold standard, the input/training waveforms.
+    <br>
+    <br>
+    Another key concept in WaveNet is the use of <b>dilated convolutions</b> to learn features at wider timescales than consecutive samples (e.g. 1, 2, 4, 8, 16 samples apart).
     <h3>Preprocessing</h3>
     In WaveNet, the waveform amplitudes (a 1D array of floats, in their raw form) are mu-law encoded, and then one-hot encoded<sup><a href="#ref">https://www.tensorflow.org/api_docs/python/tf/one_hot</a></sup>.
     <br>
@@ -106,7 +109,7 @@ Similarly to PixelCNNs (van den Oord et al., 2016a;b), the conditional probabili
     </pre>
     The purpose of one-hot encoding is to transform a number (in this case, the mu-law encoded value, which is by design clamped to a range of 256) into a categorical distribution - a value of 131 is <code>0*0 + 0*1 + 0*2 + ... + 1*131 + 0*132 + ...</code>. Using the categorical distribution, the input waveforms are transformed into a form that can be used in a probabilistic model.
     <h3>Training layers - stack of dilated convolutions</h3>
-    After the input data has been encoded in this form, the WaveNet model then feeds it into its k layers of stacked dilated causal convolutions. That's where the "meat" of the model is. It gets complicated here so I'll try to intersperse explanations from different sources.
+    After the input data has been encoded in this form, the WaveNet model then feeds it in batches into its k layers of stacked dilated causal convolutions. That's where the "meat" of the model is. It gets complicated here so I'll try to intersperse explanations from different sources.
     <br>
     <br>
     The following diagram from the paper describes the layers:
@@ -288,6 +291,9 @@ But training deep networks can be difficult because of the vanishing gradients p
     By using skip connections, this turns a deep network into an ensemble of relatively shallow networks (w.r.t the loss). Or, in other words, skip connections allow the neural network to compute the quality of results not only based on the previous layer (which may be far removed from the input), but by skipping backwards to previous layers closer to the input<sup><a href="#ref">“Residual Networks Behave Like Ensembles of Relatively ShallowNetworks”</a></sup>.
     <h3>Loss function</h3>
     During the training, there needs to be a step to verify the quality of the outputs against the input/training data and compute the loss/gradient. After learning parameters for this complex non-linear stack of dilated convolutions, what does WaveNet do with them?
+    <br>
+    <br>
+    First, let's describe the purpose of input batching. Input is batched for a training technique called Stochastic Gradient Descent, such that the training and updating of the model is done in small iterative steps against a batch. Traditionally, the gradient (or loss) of the model is computed across the entire corpus, such that the weights of the network are modified once per iteration. Conversely, mini-batch SGD allows the model to constantly update its weights on mini-batches of training data. This is more computationally efficient than computing a gradient on the entire dataset <sup><a href="#ref">https://developers.google.com/machine-learning/crash-course/reducing-loss/stochastic-gradient-descent</a></sup>.
     <br>
     <br>
     The code flows pretty nicely to create a generator (despite all the omitted parts) from the dilated convolution modelshown previously:
