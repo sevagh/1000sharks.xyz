@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./">MUMT 618 report</a>
+      <a href="./demo.html">1000sharks demo</a>
+    </div>
+
+    <h1>SampleRNN overview</h1>
+    SampleRNN<sup><a href="#ref">[1]</a></sup> uses recurrent neural networks to find patterns in audio waveforms.
+    <br>
+    <br>
+    Since I can't describe it better than the paper itself, this is their rationale for why RNNs are suitable for audio waveforms:
+    <br>
+    <br>
+    <img src="samplernn_rnn.png" width=750px/>
+    <br>
+    <br>
+    Note the important link to the causality of WaveNet's causal convolutions is that the memory cell uses past memory to compute present samples, or <code>h[t] = H(h[t-1])</code>.
+    <br>
+    <br>
+    SampleRNN is an <b>autoregressive</b> model like WaveNet, meaning that it computes a probabilistic model of what the next most likely sample to generate is, using the following probability distribution:
+    <br>
+    <br>
+    <img src="samplernn_probability.png" width=750px/>
+    <br>
+    <br>
+    A key concept in SampleRNN is the use of a <b>hierarchy of modules</b> operating at different temporal resolutions to capture the temporal patterns present in audio and music. This is related to how WaveNet used <b>dilated convolutions</b> to learn features at wider timescales than immediately consecutive samples.
+    <br>
+    <br>
+    The authors of SampleRNN also agree with WaveNet that discretizing the inputs gives better results than operating on the float samples directly:
+    <blockquote>
+We use a Softmax because we found that better results were obtained by discretizing the audio signals (also see van den Oord et al. (2016)) and outputting a Multinoulli distribution rather than using a Gaussian or Gaussian mixture to represent the conditional density of the original real-valued signal.
+    </blockquote>
+    The reference implementation by the original authors of the paper, <a href="https://github.com/ibab/tensorflow-wavene://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017</a>, is less readable (to me) than the <a href="https://github.com/rncm-prism/prism-samplernn">PRiSM-SampleRNN</a> implementation, so I'll use the second for the code dissection.
+    <h3>Preprocessing</h3>
+    The preprocessing uses the same mu-law encoding as the WaveNet but without the one-hot encoding. The 256-bit quantized integer is used directly instead of converting it into a 256-length vector.
+    <h3>Training layers - stack of hierarchical RNN modules</h3>
+    <h3>Loss function</h3>
+    The loss function and training parameter optimization code is very similar to the WaveNet code, down to the optimizer factory. From <code>train.py</code>:
+    <pre>
+    def create_adam_optimizer(learning_rate, momentum):
+        return tf.optimizers.Adam(learning_rate=learning_rate,
+                                  epsilon=1e-4)
+    
+    def create_sgd_optimizer(learning_rate, momentum):
+        return tf.optimizers.SGD(learning_rate=learning_rate,
+                                 momentum=momentum)
+    
+    def create_rmsprop_optimizer(learning_rate, momentum):
+        return tf.optimizers.RMSprop(learning_rate=learning_rate,
+                                     momentum=momentum,
+                                     epsilon=1e-5)
+    
+    optimizer_factory = {'adam': create_adam_optimizer,
+                     'sgd': create_sgd_optimizer,
+                     'rmsprop': create_rmsprop_optimizer}
+
+    # Optimizer
+    opt = optimizer_factory[args.optimizer](
+        learning_rate=args.learning_rate,
+        momentum=args.momentum,
+    )
+
+    # Compile the model
+    compute_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')
+    model.compile(optimizer=opt, loss=compute_loss, metrics=[train_accuracy])
+    </pre>
+    These are passed into the SampleRNN model code (<code>samplernn/model.py</code>):
+    <pre>
+    def train_step(self, data):
+        (x, y) = data
+        with tf.GradientTape() as tape:
+            raw_output = self(x, training=True)
+            prediction = tf.reshape(raw_output, [-1, self.q_levels])
+            target = tf.reshape(y, [-1])
+            loss = self.compiled_loss(
+                target,
+                prediction,
+                regularization_losses=self.losses)
+        grads = tape.gradient(loss, self.trainable_variables)
+        grads, _ = tf.clip_by_global_norm(grads, 5.0)
+        self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
+        self.compiled_metrics.update_state(target, prediction)
+        return {metric.name: metric.result() for metric in self.metrics}
+    </pre>
+    Like with WaveNet, a predicted waveform is produced from the model during training and then compared to the input waveforms to compute the loss. The actual prediction is done with <code>self(x, training=True)</code>, which in Python would be implemented by the object's <code>call()</code> function:
+    <pre>
+    def call(self, inputs, training=True, temperature=1.0):
+       # UPPER TIER
+       big_frame_outputs = self.big_frame_rnn(
+           tf.cast(inputs, tf.float32)[:, : -self.big_frame_size, :]
+       )
+       # MIDDLE TIER
+       frame_outputs = self.frame_rnn(
+           tf.cast(inputs, tf.float32)[:, self.big_frame_size-self.frame_size : -self.frame_size, :],
+           conditioning_frames=big_frame_outputs,
+       )
+       # LOWER TIER (SAMPLES)
+       sample_output = self.sample_mlp(
+           inputs[:, self.big_frame_size - self.frame_size : -1, :],
+           conditioning_frames=frame_outputs,
+       )
+       return sample_output
+    </pre>
+    The values are <b>16-sample frames</b> for the middle tier, and <b>64-sample frames</b> for the upper tier.
+    Here we see a key distinction between SampleRNN and WaveNet. WaveNet uses the weights of the dilated convolution network to predict samples with knowledge of different temporal scales built in. SampleRNN is using patterns learned at broad temporal scales to condition the lower temporal scales - this means that SampleRNN's <b>choice</b> of high-level/long-term temporal feature <b>feeds into the subsequent choices</b> for the low-level temporal feature predictions.
+    <br>
+    <br>
+    The optimizers are the same. The loss function is in fact the same as WaveNet, except that WaveNet used TensorFlow 1's <code>softmax_cross_entropy_with_logits</code> function<sup><a href="#ref">oldapi_loss</a></sup>, while SampleRNN uses a slightly different API<sup><a href="#ref">newapi_loss</a></sup>,<code>SparseCateoricalCrossentropy</code>. The difference is explained simply that if your data is one-hot encoded (i.e. 256-bit mu-law integers expanded into a vector of 256 0s or 1s, like WaveNet), you would use the softmax cross entropy function, whereas if they're integers (like SampleRNN), you would use a sparse softmax cross entropy function.
+    <br>
+    <br>
+    We can also see the input data is batched as in WaveNet, indicating similar use of mini-batch iterative training (aka mini-batch Stochastic Gradient Descent):
+    <pre>
+    initial_epoch = get_initial_epoch(resume_from)
+    dataset = get_dataset(args.data_dir, args.num_epochs-initial_epoch, args.batch_size, seq_len, overlap)
+
+    # Dataset iterator
+    def train_iter():
+        for batch in dataset:
+            num_samps = len(batch[0])
+            for i in range(overlap, num_samps, seq_len):
+                x = quantize(batch[:, i-overlap : i+seq_len], q_type, q_levels)
+                y = x[:, overlap : overlap+seq_len]
+                yield (x, y)
+
+    callbacks = [
+        TrainingStepCallback(
+            model = model,
+            num_epochs = args.num_epochs,
+            steps_per_epoch = steps_per_epoch,
+            steps_per_batch = steps_per_batch,
+        ModelCheckpointCallback(
+            monitor = 'loss',
+            save_weights_only = True,
+            save_best_only = args.checkpoint_policy.lower()=='best',
+            save_freq = args.checkpoint_every * steps_per_epoch),
+        tf.keras.callbacks.EarlyStopping(
+            monitor = 'loss',
+            patience = args.early_stopping_patience),
+    ]
+    </pre>
+    The above code is the equivalent of the training loop of WaveNet, where the SampleRNN model exposes its trainable variables and the Tensorflow library is leveraged to use the loss function above to train the model.
+    <br>
+    <br>
+    Note a detail of SampleRNN is that they're using the keras EarlyStopping<sup><a href="#ref">keras earlystop</a></sup> which stops training if it predicts that the model is not improving enough to be worthwhile. In WaveNet, the training proceeds for as many steps as the user requested.
+    <h3>Generating audio</h3>
+    <h1 id="ref">References</h2>
+    <ol>
+      <li><a href="https://arxiv.org/abs/1612.07837">SampleRNN: An Unconditional End-to-End Neural Audio Generation Model - arXiv.org</a></li>
+    </ol>
+  </body>
+</html>
+
