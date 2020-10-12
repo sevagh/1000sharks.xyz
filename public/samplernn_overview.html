@@ -67,64 +67,6 @@ We use a Softmax because we found that better results were obtained by discretiz
     <br>
     However, as the author says, 2-tier SampleRNN may have a depth that makes it more optimal considering the training architecture of SampleRNN (or in other words, there needs to be an analysis of alternative training architectures to make 3-tier beat 2-tier).
 
-    <h2>SampleRNN configuration</h2>
-    I'll summarize the available SampleRNN hyperparameters and other customizeable steps compared across the original 2017 ICLR implementation, the Dadabots fork, the PRiSM fork which I use throughout the rest of this page, and finally my own modifications to the PRiSM parameters after experiment 0:
-    <br>
-    <br>
-    <table>
-      <tr>
-        <th></th>
-        <th>Original</th>
-        <th>Dadabots</th>
-        <th>PRiSM</th>
-        <th>Descr</th>
-      </tr>
-      <tr>
-        <th>RNN layers</th>
-        <td>4</td>
-        <td>5</td>
-        <td>4</td>
-        <td>Quality of results (dadabots note that 5 learns music better than 4)</td>
-      </tr>
-      <tr>
-        <th>Tiers</th>
-        <td>2 or 3</td>
-        <td>2 or 3 (2 recommended for good music)</td>
-        <td>3</td>
-        <td>Tiers of RNN (more = wider temporal timescale, but...*)</td>
-      </tr>
-      <tr>
-        <th>Frame sizes (corresponds to tiers)</th>
-        <td>16</td>
-        <td>16</td>
-        <td>16,64</td>
-        <td>Samples apart between low and high timescales</td>
-      </tr>
-      <tr>
-        <th>Sample rate</th>
-        <td>16000 (fixed)</td>
-        <td>16000</td>
-        <td>16000</td>
-        <td>Sample rate of training/generating waveform (lower = faster learning, better able to learn long-timescale patterns)</td>
-      </tr>
-      <tr>
-        <th>Training input</th>
-        <td>No details</td>
-        <td>Chop albums into 8s + 1s overlap</td>
-        <td>Chop albums into 8s + 1s overlap</td>
-        <td>Suggestions on how to prepare training data</td>
-      </tr>
-      <tr>
-        <th>Epochs</th>
-        <td>Not customizeable</td>
-        <td>Not customizeable</td>
-        <td>100</td>
-        <td>Entire cycles of training on the same data (more = possibly better learning, but not necessarily)</td>
-      </tr>
-    </table> 
-    <br>
-    The frame sizes 16, 64 correspond to the additional tiers of SampleRNN (the first tier is always n = 1, or consecutive samples). A 2-tier SampleRNN architecture has a wider temporal scale of learning at 16 frames, while a 3-tier SampleRNN architecture learns at 16 and 64 frames.
-
     <h3>Preprocessing</h3>
     The preprocessing uses the same mu-law encoding as the WaveNet but without the one-hot encoding. The 256-bit quantized integer is used directly instead of converting it into a 256-length vector.
     <h3>Training layers - stack of hierarchical RNN modules</h3>
@@ -191,7 +133,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     <img src="samplernn_gated_rnn.png" width=600px />
     <br>
     <br>
-    In the WaveNet diagram and paper, I described how PixelCNN started using non-linear functions, sigmoid and tanh, to model non-linearities in the same way that an LSTM did in PixelRNN. Here, we come full circle and learn that the sigmoid and tanh functions are also key inside the implementation of LSTM and GRU units<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
+    In the WaveNet overview, I described how PixelCNN started using non-linear functions, sigmoid and tanh, to model non-linearities in the same way that an LSTM did in PixelRNN. Here, we come full circle and learn that the sigmoid and tanh functions are also implicated inside the implementation of LSTM and GRU units<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
     <br>
     <br>
     The authors conclude that both GRU- and LSTM-RNNs are an improvement over regular RNNs for modeling more complex relationships, and they demonstrate that GRUs train more efficiently.
@@ -231,6 +173,9 @@ We use a Softmax because we found that better results were obtained by discretiz
             frame_outputs = self.rnn(input_frames)
     </pre>
     Interesting to note is that skip connections are used in the code but not mentioned in the paper. As covered, skip connections in WaveNet were to solve the vanishing gradient problem - but, in SampleRNN, the use of GRUs (or LSTMs) in the RNN should hypothetically solve the vanishing gradient problem already.
+    <br>
+    <br>
+    Another thing to note is the upsampling of the samples to select samples that are spaced 16- and 64-samples apart for the small and big frames. This is exactly how WaveNet's dilated convolutions worked.
     <br>
     <br>
     We also see that the FrameRNNs can be conditioned externally just like the first tier, Sample MLP. In practise, the big Frame RNN is unconditioned, but its decisions are used to condition the small Frame RNN and finally the Sample MLP. Putting it all together in samplernn/model.py:

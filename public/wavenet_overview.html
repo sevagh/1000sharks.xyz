@@ -299,7 +299,7 @@ But training deep networks can be difficult because of the vanishing gradients p
     First, let's describe the purpose of input batching. Input is batched for a training technique called Stochastic Gradient Descent, such that the training and updating of the model is done in small iterative steps against a batch. Traditionally, the gradient (or loss) of the model is computed across the entire corpus, such that the weights of the network are modified once per iteration. Conversely, mini-batch SGD allows the model to constantly update its weights on mini-batches of training data. This is more computationally efficient than computing a gradient on the entire dataset <sup><a href="#ref">[9]</a></sup>.
     <br>
     <br>
-    The code flows pretty nicely to create a generator (despite all the omitted parts) from the dilated convolution modelshown previously:
+    The code flows pretty nicely to create a generator (despite all the omitted parts) from the dilated convolution model shown previously:
     <pre>
     with tf.name_scope('dilated_stack'):
         for layer_index, dilation in enumerate(self.dilations):
