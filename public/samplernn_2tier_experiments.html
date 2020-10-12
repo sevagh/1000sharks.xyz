@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./">MUMT 618 report</a>
+      <a href="./demo.html">1000sharks demo</a>
+    </div>
+
+    <h1>2-tier SampleRNN experiments</h1>
+    Let's run some experiments with the SampleRNN implementation most successful for producing music - that of the dadabots. My earlier hestitation for using the dadabots code was how old the dependencies were. As such, it was slightly trickier to get up and running than the modern Tensorflow 2 PRiSM fork.
+
+    <h2>Python minor code tweaks</h2>
+
+    I forked the dadabots_sampleRNN codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[12]</a></sup>.
+    <pre>
+    diff --git a/models/two_tier/two_tier16k.py b/models/two_tier/two_tier16k.py
+    index 5a579c8..9f9d53f 100644
+    --- a/models/two_tier/two_tier16k.py
+    +++ b/models/two_tier/two_tier16k.py
+    @@ -505,10 +505,13 @@ def generate_and_save_samples(tag):
+                     numpy.int32(t == FRAME_SIZE)
+                 )
+    
+    -        samples[:, t] = sample_level_generate_fn(
+    -            frame_level_outputs[:, t % FRAME_SIZE],
+    -            samples[:, t-FRAME_SIZE:t],
+    -        )
+    +        try:
+    +            samples[:, t] = sample_level_generate_fn(
+    +                frame_level_outputs[:, t % FRAME_SIZE],
+    +                samples[:, t-FRAME_SIZE:t],
+    +            )
+    +        except:
+    +            pass
+    
+         total_time = time() - total_time
+         log = "{} samples of {} seconds length generated in {} seconds."
+    @@ -705,8 +708,9 @@ while True:
+             # 5. Generate and save samples (time consuming)
+             # If not successful, we still have the params to sample afterward
+             print "Sampling!",
+    +        print "skipping because it crashes!"
+             # Generate samples
+    -        generate_and_save_samples(tag)
+    +        #generate_and_save_samples(tag)
+             print "Done!"
+    
+             if total_iters-last_print_iters == PRINT_ITERS \
+    </pre>
+    After several cycles of training, the program would crash with an index out of range error in the <code>samples</code> slicing code. After adding a <code>try/catch</code>, I noticed a second problem which is that the sample generation code (in between training steps) was using up all of my 32GB of RAM (not GPU vmem, but real system RAM). I ended up commenting out the <code>generate_and_save_samples</code> code. This means that while training, the model won't emit sample clips to allow one to listen to the quality of the training - but at least it prevented crashing.
+    <h2>Python setup</h2>
+    The dadabots SampleRNN installation instructions<sup><a href="#ref">https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu</a></sup> are tailored to a Google Cloud Platform Ubuntu 16.04 setup with an NVIDIA V100 GPU. I adjusted the steps to work on my computer.
+    <br>
+    <br>
+    The full install steps for a functional dadabots SampleRNN (with notes) were as follows:
+    <pre>
+    # we need python 2.7 for dadabots sampleRNN
+    # create a conda environment
+
+    $ conda create -n dadabots_SampleRNN python=2.7 anaconda
+    $ conda activate dadabots_SampleRNN
+
+    # we need Theano==1.0.0 - newer breaks
+
+    (dadabots_SampleRNN) $ conda install -c mila-udem -c mila-udem/label/pre theano==1.0.0 pygpu
+
+    # we need Lasagne (based on Theano) 0.2.dev1
+    # this command installs 0.2.dev1 correctly - suggested by https://github.com/imatge-upc/salgan/issues/29
+
+    (dadabots_SampleRNN) $ pip install --upgrade https://github.com/Lasagne/Lasagne/archive/master.zip
+
+    # we need to create a ~/.theanorc file with some cudnn details
+    # cudnn.h is installed on my system through Fedora repos, as mentioned previously
+    # 
+    # nvcc requires an older GCC, 8.4, which I already had set up
+
+    $ cat ~/.theanorc
+    [dnn]
+    include_path = /usr/include/cuda
+
+    [global]
+    mode = FAST_RUN
+    device = cuda0
+    floatX = float32
+
+    [nvcc]
+    compiler_bindir = /home/sevagh/GCC-8.4.0/bin
+
+    # at this point, we have a working dadabots 2-tier SampleRNN model
+    # install some extra pip packages
+
+    (dadabots_SampleRNN) $ pip install graphviz pydot pydot-ng
+    </pre>
+
+    <h2>Training data preparation</h2>
+
+    I ran the 2-tier dadabots SampleRNN on a Cannibal Corpse album, A Skeletal Domain:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/2Op6wx6qPnA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <br>
+    Similarly to the 3-tier procedure, I downloaded the audio using youtube-dl, converted it to 16kHz mono with ffmpeg, placed the wav file in the required directory and ran the data prep script:
+    <pre>
+    (dadabots_SampleRNN) $ cp skeletal_domain.wav datasets/music/downloads/
+    (dadabots_SampleRNN) $ cd datasets/music && python new_experiment16k.py skeletal-domain downloads/
+    </pre>
+    This creates 6400 overlapping flac part files from the original wav file:
+    <pre>
+    $ ls datasets/music/skeletal-domain/parts/p*.flac | head -n20
+    datasets/music/skeletal-domain/parts/p0.flac
+    datasets/music/skeletal-domain/parts/p1000.flac
+    datasets/music/skeletal-domain/parts/p1001.flac
+    datasets/music/skeletal-domain/parts/p1002.flac
+    datasets/music/skeletal-domain/parts/p1003.flac
+    datasets/music/skeletal-domain/parts/p1004.flac
+    datasets/music/skeletal-domain/parts/p1005.flac
+    datasets/music/skeletal-domain/parts/p1006.flac
+    datasets/music/skeletal-domain/parts/p1007.flac
+    datasets/music/skeletal-domain/parts/p1008.flac
+    datasets/music/skeletal-domain/parts/p1009.flac
+    datasets/music/skeletal-domain/parts/p100.flac
+    datasets/music/skeletal-domain/parts/p1010.flac
+    datasets/music/skeletal-domain/parts/p1011.flac
+    datasets/music/skeletal-domain/parts/p1012.flac
+    datasets/music/skeletal-domain/parts/p1013.flac
+    datasets/music/skeletal-domain/parts/p1014.flac
+    datasets/music/skeletal-domain/parts/p1015.flac
+    datasets/music/skeletal-domain/parts/p1016.flac
+    datasets/music/skeletal-domain/parts/p1017.flac
+    </pre>
+
+    <h2>Training command</h2>
+    The dadabots training command they recommend with the best hyperparameters for producing music is:
+    <pre>
+    # start training
+
+    (dadabots_SampleRNN) $ python -u models/two_tier/two_tier16k.py --exp skeletal-domain_experiment --n_frames 64 --frame_size 16 --emb_size 256 --skip_conn True --dim 1024 --n_rnn 5 --rnn_type LSTM --q_levels 256 --q_type mu-law --batch_size 32 --weight_norm True --learn_h0 False --which_set skeletal-domain
+
+    # resume training
+
+    (dadabots_SampleRNN) $ python -u models/two_tier/two_tier16k.py --exp skeletal-domain_experiment --n_frames 64 --frame_size 16 --emb_size 256 --skip_conn True --dim 1024 --n_rnn 5 --rnn_type LSTM --q_levels 256 --q_type mu-law --batch_size 32 --weight_norm True --learn_h0 False --which_set skeletal-domain --resume
+    </pre>
+    I had to modify their batch size from 128 (which would crash on GPU vmem OOM) to 32 to fit on the 8GB of GPU memory on my video card.
+    <br>
+    <br>
+    This ran for 10 epochs, or 41 hours of training (220,000 total iterations) when I decided to stop and verify the outputs. The saved model on-disk looks like this:
+    <pre>
+    $ tree results_2t/models-two_tier-two_tier16k.py-expskeletal-domain_experiment-n_frames64-frame_size16-emb_size256-skip_connT-dim1024-n_rnn5-rnn_typeLSTM-q_levels256-q_typemu-law-batch_size32-weight_normT-learn_h0F-which_setskeletal-domain-lr0.001/ -L 1
+    results_2t/models-two_tier-two_tier16k.py-expskeletal-domain_experiment-n_frames64-frame_size16-emb_size256-skip_connT-dim1024-n_rnn5-rnn_typeLSTM-q_levels256-q_typemu-law-batch_size32-weight_normT-learn_h0F-which_setskeletal-domain-lr0.001/
+    ├── args.pkl
+    ├── best
+    ├── model_settings.txt
+    ├── params
+    ├── samples
+    ├── th_conf.txt
+    ├── train_log.pkl
+    └── train_log.png
+    </pre>
+    The file <code>train_log.png</code> is actually an image showing how the SampleRNN model is improving during training:
+    <br>
+    <img src="dadabots_2t_results.png" width=400px/>
+
+    <h2>Generation command and results</h2>
+    To generate music from the saved model, we run the following command:
+    <pre>
+    (dadabots_SampleRNN) $ python -u models/two_tier/two_tier_generate16k.py --exp skeletal-domain_experiment --n_frames 64 --frame_size 16 --emb_size 256 --skip_conn True --dim 1024 --n_rnn 5 --rnn_type LSTM --q_levels 256 --q_type mu-law --batch_size 32 --weight_norm True --learn_h0 False --which_set skeletal-domain --n_secs 20 --n_seqs 200 --temp 0.95
+    </pre>
+    The results sound great - almost exactly like what the dadabots created, it sounds like unique (and random) compositions by the band Cannibal Corpse in the style of the album, A Skeletal Domain, that it was trained to overfit.
+    <br>
+    <br>
+    Checkpoint/training iteration 220,001:<br>
+    <audio controls>
+	    <source src="skeletal_domain_1.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <audio controls>
+	    <source src="skeletal_domain_2.wav" type="audio/wav"</source>
+    </audio>
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li>mlacoustics (citations.bib)</li>
+      <li>wavenetpaper (citations.bib)</li>
+      <li>samplernnpaper (citations.bib)</li>
+      <li>magentaddsp (citations.bib)</li>
+      <li>dadabots (citations.bib)</li>
+      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
+      <li>prism (citations.bib)</li>
+      <li>prism-blog (citations.bib)</li>
+      <li>prism gh commits</li>
+      <li>my fork</li>
+      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
+      <li> conda </li>
+      <li> dadabots curation </li>
+      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
+      <li> chromaprint https://acoustid.org/chromaprint </li>
+      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+    </ol>
+  </body>
+</html>
+

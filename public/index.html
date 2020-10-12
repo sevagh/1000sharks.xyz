@@ -37,18 +37,11 @@
     <iframe width="300" height="256" src="https://www.youtube.com/embed/MwtVkPKx3RA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     <br>
     <br>
-    My initial idea was to see if I could imitate the dadabots by training SampleRNN in a variety of experiments:
-    <ol>
-      <li>Train on a single album and generate music, just to familiarize myself with SampleRNN</li>
-      <li>Two different artists, trained separately, to generate music that sounds like Artist A and Artist B</li>
-      <li>Combined training on both artists, to generate music that sounds like Artist A + Artist B</li>
-      <li>Training on separate instruments to layer the results over each other</li>
-      <li>Training on separate song segments (e.g. choruses, verses, guitar solos) and concatenating the generated outputs to make a Frankensong</li>
-    </ol>
-    To supplement the illusion of a "real" music artist, I also want to generate album art using additional AI techniques; as these are not directly related to musical acoustics, they'll occupy a small section at the bottom of this report.
+    My idea is to imitate the dadabots by training SampleRNN to create original heavy metal music. To supplement the illusion of a "real" music artist, I also want to generate album art using additional AI techniques; as these are not directly related to musical acoustics, they'll occupy a small section at the bottom of this report.
     <br>
     <br>
     To explain the overall aesthetic/theme of death metal + sharks:
+    <br>
     <iframe width="300" height="256" src="https://www.youtube.com/embed/EzCbsw3WgTk?start=85" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
     <h1>Deeper dives</h1>
@@ -56,28 +49,14 @@
     <ol>
 	    <li>Input data and preprocessing - how are the training waveforms represented?</li>
 	    <li>The model/neural network itself - what are WaveNet and SampleRNN computing?</li>
-	    <li>Loss function - how do WaveNet/SampleRNN know that one set of parameters is better than the other? What defines the "correct" output of a waveform?</li>
+	    <li>Loss function and iterative training/optimization - how do WaveNet/SampleRNN know that one set of parameters is better than the other? What defines the "correct" output of a waveform?</li>
 	    <li>Generation - after training a model with low loss, how do WaveNet and SampleRNN use the trained model to generate brand new waveforms of audio?</li>
     </ol>
     <a href="/wavenet_overview.html"><h2>WaveNet overview</h2></a>
+    <a href="/samplernn_overview.html"><h2>SampleRNN overview</h2></a>
 
     <h1>Experiment setup</h1>
-    A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. Most of the models have outdated dependencies. You most likely can't run something that was published in 2017, as the popular machine learning frameworks on which most papers depend (Torch, Keras, Tensorflow) are evolving at a fast pace.
-    <br>
-    <br>
-    As an example, I tried to unsuccessfully run the original SampleRNN code, and many other forks, until finding a good one:
-    <ol>
-      <li>https://github.com/soroushmehr/sampleRNN_ICLR2017</li>
-      <li>https://github.com/worosom/docker-zvk-SampleRNN</li>
-      <li>https://github.com/ZVK/sampleRNN_ICLR2017</li>
-      <li><b>The dadabots' own fork</b>: https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu</li>
-      <li>https://github.com/deepsound-project/samplernn-pytorch</li>
-    </ol>
-
-    I finally found the RNCM (Royal Northern College of Music) PRiSM (Practice and Research in Science and Music) lab released a modern implementation of 3-tier SampleRNN<sup><a href="#ref">[7]</a></sup>:
-    <blockquote>
-    PRiSM is shortly going to publish its own implementation, using TensorFlow 2, and we’ll be explaining the features of the PRiSM SampleRNN in our next instalment – when we will also make the code available on PRiSM’s GitHub pages, along with a number of pretrained and optimised models.
-    </blockquote>
+    A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.
 
     <h2>Hardware and OS setup</h2>
 
@@ -90,13 +69,20 @@
     </ul>
     The OS is Fedora 32, and NVIDIA drivers and CUDA toolkit were installed using negativo17's Fedora-nvidia repositories<sup><a href="#ref">[11]</a></sup>.
 
-    <a href="./samplernn_experiments.html"><h2>SampleRNN experiments</h2></a>
+    <a href="./samplernn_3tier_experiments.html"><h2>3-tier SampleRNN experiments</h2></a>
+
+    <a href="./samplernn_2tier_experiments.html"><h2>2-tier SampleRNN experiments</h2></a>
+
+    <h2>(tentative) WaveNet experiments</h2></a>
+
+    This is an optional part of the project, since SampleRNN is considered better at generating music. It may still be instructive to get an idea of how to train WaveNet and to verify some results.
     
     <a href="./curation.html"><h1>Curating neural generated results</h1></a>
 
     <a href="./album_art.html"><h1>Album art generation</h1></a>
 
     <h1>Results & conclusion</h1>
+    It took 1 week to complete the training on Periphery only. My limitation is computational power. There are issues today about "AI democratization", and my experiments demonstrate the difficulty of black-box computational models where the large companies or labs publishing papers have massive advantages in hardware and in-house neural network/machine learning expertise (FIND REFERENCE FAANGMAN NEURAL NETWORKS).
 
     <h1 id="ref">References</h2>
     <ol>

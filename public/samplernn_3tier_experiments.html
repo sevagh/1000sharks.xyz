@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./">MUMT 618 report</a>
+      <a href="./demo.html">1000sharks demo</a>
+    </div>
+
+    <h1>3-tier SampleRNN experiments</h1>
+
+    The RNCM (Royal Northern College of Music) PRiSM (Practice and Research in Science and Music) lab released a modern implementation of 3-tier SampleRNN<sup><a href="#ref">[7]</a></sup>:
+    <blockquote>
+    PRiSM is shortly going to publish its own implementation, using TensorFlow 2, and we’ll be explaining the features of the PRiSM SampleRNN in our next instalment – when we will also make the code available on PRiSM’s GitHub pages, along with a number of pretrained and optimised models.
+    </blockquote>
+    Since the dadabots discourage the use of their own 3-tier model, we'll use the PRiSM repo (where the 3-tier model is the primary focus).
+
+    <h2>Python setup + minor code tweaks</h2>
+
+    I forked the prism-samplernn codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[12]</a></sup>.
+    <pre>
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+    </pre>
+    Without this parameter, the training would crash on my GPU (RTX 2070 SUPER) with a mysterious error message, "Fail to find the dnn implementation". It's an esoteric fix that one can find scattered across GitHub<sup><a href="#ref">[13]</a></sup>.
+    <br>
+    <br>
+    The Python setup is straightforward using conda<sup><a href="#ref">[14]</a></sup> and following the project's README.md:
+    <pre>
+    $ conda create -n prism-samplernn python=3.8 anaconda
+    $ conda activate prism-samplernn
+    (prism-samplernn) $ pip install -r requirements.txt
+    </pre>
+
+    <h1>Experiment 0: training on a single album</h1>
+    We'll train 3-tier SampleRNN first on Animals as Leaders' self-titled album:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/SZ2WrN93vno" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <br>
+    I downloaded the audio using youtube-dl, converted it to 16kHz mono with ffmpeg (recommended for SampleRNN to perform better), split it up into chunks (ignoring silence) using the prism-samplernn script <code>chunk_audio.py</code>, and ran the training with default parameters:
+    <pre>
+    $ python train.py --id aamgen --data_dir ./chunks/ --num_epochs 100 --batch_size 64 --checkpoint_every 5 --output_file_dur 3 --sample_rate 16000
+    </pre>
+    This emitted some generated clips during the training. Let's listen to 2 of the more musically interesting clips (a lot of them are just silence), generated at epoch 20 and 85 of the 100-epoch training. An epoch is one cycle of the entire training dataset - this means that the neural network observed the same album 100 times iteratively to learn how to model it:
+    <br>
+    Epoch 20:<br>
+    <audio controls>
+	    <source src="aamgen_epoch_20.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    Epoch 85:<br>
+    <audio controls>
+	    <source src="aamgen_epoch_85.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    After the training was done (it took ~3 days on my machine), I generated 2 10-second clips of what I thought would be "Animas-as-Leaders-esque" music. The generate command is:
+    <pre>
+    $ python generate.py --output_path ./aamgen-out/aamgen.wav --checkpoint_path ./logdir/aamgen/14.09.2020_19.02.06/model.ckpt-90 --config_file ./default.config.json --num_seqs 2 --dur 10 --sample_rate 16000
+    </pre>
+    This says to use the model checkpoint 90. Even though we specified 100 epochs in the training, the model has an intelligent stop when it sees that additional training is not improving the model. In this case, it seems like 90 epochs exhausted the model's learning ability. Here's one of them (both sound equally bad):
+    <br>
+    <audio controls>
+	    <source src="aamgen_0.wav" type="audio/wav"</source>
+    </audio>
+
+    <h2>Experiment 0 lessons</h2>
+    I applied tweaks that Karl Hiner<sup><a href="#ref">[15]</a></sup> did in his experiments - for my next experiment, I would try some or all of the following:
+    <ul>
+	    <li>Increase the number of RNN layers from 4 to 5 to try to create more cohesive music</li>
+	    <li>Use more training data than just one album</li>
+	    <li>Increase epochs from 100 to 250 (longer training may lead to better results)</li>
+    </ul>
+    We're also probably running into the same discovery of others, that 3-tier architecture of the PRiSM-SampleRNN implementation may be producing worse music than 2-tier.
+
+    <h1>Experiment 1: longer training on multiple albums</h1>
+    For my next experiment, I downloaded instrumental versions of the albums of Periphery (instrumental - I didn't want vocals mixing into the results, as I want to focus on musical instruments acoustics) and Mestis (an instrumental band). The data fetch and preprocessing scripts are available in my prism-samplernn fork:
+    <pre>
+    #!/usr/bin/env bash
+    
+    echo "Fetching training data - youtube-dl wav files for Mestis and Periphery albums"
+    
+    # youtube playlists for Mestis - Eikasia, Polysemy, Basal Ganglia
+    mestis_album_1="PLNOrZEIoYAMgLJeZeCUEhABLPz7yqkyfI"
+    mestis_album_2="PLfoVvOUi1CqV0O-yMdOvTff_vp8hOQnWi"
+    mestis_album_3="PLRK89uMjq03BMsxBKFGBcDAh2G7ACwJMK"
+    
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${mestis_album_1}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${mestis_album_2}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${mestis_album_3}
+    
+    # youtube playlists for instrumental Periphery albums - Periphery III, I, II, IV, Omega, Juggernaut
+    periphery_album_1="PLSTnbYVfZR03JGmoJri6Sgvl4f0VAi9st"
+    periphery_album_2="PL7DVODcLLjFplM5Rw-bNUyrwAECIPRK26"
+    periphery_album_3="PLuEYu7jyZXdde7ePWV1RUvrpDKB8Gr6ex"
+    periphery_album_45="PLEFyfJZV-vtKeBedXTv82yxS7gRZkzfWr"
+    periphery_album_6="PL6FJ2Ri6gSpOWcbdq--P5J0IRcgH-4RVm"
+    
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_1}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_2}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_3}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_45}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_6}
+    
+    mkdir -p periphery-raw
+    mkdir -p mestis-raw
+    
+    find . -maxdepth 1 -mindepth 1 -type f -iname '*PERIPHERY*.wav' -exec mv {} periphery-raw/ \;
+    find . -maxdepth 1 -mindepth 1 -type f -iname '*MESTIS*.wav' -exec mv {} mestis-raw/ \;
+    find . -maxdepth 1 -mindepth 1 -type f -iname '*Javier*.wav' -exec mv {} mestis-raw/ \;
+    find . -maxdepth 1 -mindepth 1 -type f -iname '*Suspiro*.wav' -exec mv {} mestis-raw/ \;
+    find . -maxdepth 1 -mindepth 1 -type f -name '*.wav' -exec rm {} \;
+    
+    mkdir -p mestis-processed
+    mkdir -p periphery-processed
+    
+    echo "Processing each wav file to 16kHz mono"
+    
+    for f in mestis-raw/*.wav; do
+            ffmpeg -i "${f}" -ac 1 -ar 16000 "mestis-processed/$(basename "$f")";
+    done
+    
+    for f in periphery-raw/*.wav; do
+            ffmpeg -i "${f}" -ac 1 -ar 16000 "periphery-processed/$(basename "$f")";
+    done
+    
+    mkdir -p periphery-chunks
+    mkdir -p mestis-chunks
+    mkdir -p mixed-chunks
+    
+    for f in mestis-processed/*.wav; do
+            python ../chunk_audio.py --input_file "${f}" --output_dir mestis-chunks --chunk_length 8000 --overlap 1000
+            python ../chunk_audio.py --input_file "${f}" --output_dir mixed-chunks --chunk_length 8000 --overlap 1000
+    done
+    
+    for f in periphery-processed/*.wav; do
+            python ../chunk_audio.py --input_file "${f}" --output_dir periphery-chunks --chunk_length 8000 --overlap 1000
+            python ../chunk_audio.py --input_file "${f}" --output_dir mixed-chunks --chunk_length 8000 --overlap 1000
+    done
+    </pre>
+    What the script does is:
+    <ul>
+	    <li>Fetch files for every Mestis song (from YouTube playlists + youtube-dl)</li>
+	    <li>Fetch files for every instrumental Periphery song (from YouTube playlists + youtube-dl)</li>
+	    <li>Pre-process them into 16kHz mono with ffmpeg (for optimal training)</li>
+	    <li>Apply the chunk_audio.py script to split into non-silent 8-second chunks with 1 second overlap</li>
+	    <li>Create 3 sets of training data - periphery-chunks, mestis-chunks, mixed-chunks</li>
+    </ul>
+    My intention was to train the model on each of the sets of training chunks, to create generated music that:
+    <ul>
+	    <li>Sounds like Periphery only</li>
+	    <li>Sounds like Mestis only</li>
+	    <li>Sounds like "Mestiphery", an organic mashup</li>
+    </ul>
+    <h2>Experiment 1 part 1 - Periphery only</h2>
+    The training command for periphery-only is:
+    <pre>
+$ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks/ --num_epochs 100 --batch_size 64 --sample_rate 16000
+    </pre>
+    
+    <h3>Periphery only results</h3>
+    Here's a 30-second clip output from the training on Periphery only:
+    <br>
+    <audio controls>
+	    <source src="periphery_only_0.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    Another trait is that most generated audio consists of silence. I was very lucky to get almost 30 seconds of musical content in a single clip. Subjectively, this sounds nothing like Periphery:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/1_VZji3YFo4?start=90" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <br>
+    Some more clips show the high-pitched output (which is melodic, but again, seemingly bizarre when trained on downtuned palm-muted rhythm guitar riffs).
+    <br>
+    Epoch 67:
+    <br>
+    <audio controls>
+	    <source src="periphery_only_epoch_67.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    Epoch 70:
+    <br>
+    <audio controls>
+	    <source src="periphery_only_epoch_70.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <h4>Overfitting to a single song, Make Total Destroy</h4>
+    Since SampleRNN was trained on 6 different albums, let's narrow down why it wasn't able to create Periphery's characteristic sound by overfitting specifically on the song shown above.
+    <br>
+    <br>
+    After creating a test dataset with only the song Make Total Destroy and training on it for 100 epochs, the model reaches the following loss and accuracy:
+    <pre>
+    Epoch: 91/100, Step: 118/125, Loss: 0.867, Accuracy: 74.538, (0.246 sec/step)
+    Epoch: 91/100, Step: 119/125, Loss: 0.864, Accuracy: 74.616, (0.255 sec/step)
+    Epoch: 91/100, Step: 120/125, Loss: 0.861, Accuracy: 74.705, (0.247 sec/step)
+    Epoch: 91/100, Step: 121/125, Loss: 0.857, Accuracy: 74.797, (0.246 sec/step)
+    Epoch: 91/100, Step: 122/125, Loss: 0.854, Accuracy: 74.893, (0.246 sec/step)
+    Epoch: 91/100, Step: 123/125, Loss: 0.850, Accuracy: 74.985, (0.251 sec/step)
+    Epoch: 91/100, Step: 124/125, Loss: 0.847, Accuracy: 75.076, (0.246 sec/step)
+    </pre>
+    Generated audio from epoch 91:
+    <br>
+    Clip 1:
+    <br>
+    <audio controls>
+	    <source src="maketotaldestroy_1.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    Clip 2:
+    <br>
+    <audio controls>
+	    <source src="maketotaldestroy_2.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    These don't sound anything like music.
+
+    <h3>Generated audio visualization</h3>
+    The above clips show collections of realistic note onsets. One of my original statements about WaveNet and SampleRNN was that they could produce music with convincing dynamics and timbre, to make us believe real humans played it. Observing various aspects of the waveform in the time and frequency domain should be useful.
+    <br>
+    <br>
+    Let's view each clip (epochs 67, 70) in the time domain and frequency domain (with a spectrogram):
+    <img src="periphery_epoch_67_timedomain.png" width=800px/>
+    <img src="periphery_epoch_70_timedomain.png" width=800px/>
+    <img src="periphery_epoch_67_spectrogram.png" width=800px/>
+    <img src="periphery_epoch_70_spectrogram.png" width=800px/>
+    <br>
+    Although this is subjective, one can see the dynamic nature of the produced audio in the plots above. It really does look like there are real musical variations in the complex waveform (aside from the totally blank silences which are odd in real music).
+
+    <h3>Mu-law vs linear quantization</h3>
+    Karl Hiner's blog post touches on WaveNet's mu-law quantization, and claims it sounds better than SampleRNN's linear quantization. In fact, I found that every SampleRNN implementation I found had options for linear and mu-law quantization (perhaps it was added later). In fact the original ICLR 2017 paper even has an "a-law quantization" (similar to mu-law). Let's hear what each sounds like:
+    <br>
+    <br>
+    Periphery epoch 83, mu-law quantization:
+    <br>
+    <audio controls>
+	    <source src="periphery_epoch_83_mulaw.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    Periphery epoch 83, linear quantization <b>WARNING! LOUD!</b>:
+    <br>
+    <audio controls>
+	    <source src="periphery_epoch_83_linear.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    In my subjective listening test, the linear quantization output is very loud, almost to the point of distortion and clipping. The mu-law quantization is outputting music with more subtle volume, possibly since its more suited for the logarithmic human experience of loudness.
+
+    <h2>Abandoning the original hypotheses</h2>
+    The results were very different from my expectations:
+    <ul>
+      <li>The resulting generated audio is mostly silence and junk</li>
+      <li>There are some interesting potentially musical sounds, but it's all high-pitched whistling and doesn't contain any characteristics of the band Periphery (palm-muted distorted guitar chords, etc.)</li>
+      <li>I have to generate 100s or 1000s of clips and curate the results to create a final result - the chances of getting 1 cohesive "song" (let's say, 2 minutes of contiguous music) are pretty slim</li>
+    </ul>
+    With the demonstrated poor quality of results (e.g. generated audio that sounds nothing like the band), my original hypotheses were debunked. I mixed the Mestis data into the Periphery data, and continued training the model (that was initially trained only on Periphery for 100 epochs) for 250 epochs. At this point my goal was to "embrace the weird" and see what sort of strange music I can create. The sum total of all my training and experiments (including failed starts) for 3-tier SampleRNN was <b>3 weeks</b>.
+    <h2>Training results</h2>
+    The results of training SampleRNN are stored in the <code>logdir</code> directory, in timestamped directories storing checkpoints for intermediate epochs in training. Here's a <code>tree</code> view of of the training. The size of the training directory is 51GB, after having been trained on all of the albums listed above (709MB of music):
+    <pre>
+    $ tree logdir/periphery_only/ -L 2
+    logdir/periphery_only/
+    ├── 15.09.2020_17.36.46
+    │   ├── checkpoint
+    │   ├── model.ckpt-79.data-00000-of-00001
+    │   ├── model.ckpt-79.index
+    │   ├── model.ckpt-80.data-00000-of-00001
+    │   ├── model.ckpt-80.index
+    │   ├── model.ckpt-81.data-00000-of-00001
+    │   ├── model.ckpt-81.index
+    │   ├── model.ckpt-82.data-00000-of-00001
+    │   ├── model.ckpt-82.index
+    │   ├── model.ckpt-83.data-00000-of-00001
+    │   ├── model.ckpt-83.index
+    │   └── train
+    ├── 17.09.2020_21.55.43
+    │   ├── checkpoint
+    │   ├── model.ckpt-89.data-00000-of-00001
+    │   ├── model.ckpt-89.index
+    │   ├── model.ckpt-90.data-00000-of-00001
+    │   ├── model.ckpt-90.index
+    │   ├── model.ckpt-91.data-00000-of-00001
+    │   ├── model.ckpt-91.index
+    │   ├── model.ckpt-92.data-00000-of-00001
+    │   ├── model.ckpt-92.index
+    │   ├── model.ckpt-93.data-00000-of-00001
+    │   ├── model.ckpt-93.index
+    │   └── train
+    ...truncated...
+    └── 22.09.2020_22.25.13
+        ├── checkpoint
+        ├── model.ckpt-244.data-00000-of-00001
+        ├── model.ckpt-244.index
+        ├── model.ckpt-245.data-00000-of-00001
+        ├── model.ckpt-245.index
+        ├── model.ckpt-246.data-00000-of-00001
+        ├── model.ckpt-246.index
+        ├── model.ckpt-247.data-00000-of-00001
+        ├── model.ckpt-247.index
+        ├── model.ckpt-248.data-00000-of-00001
+        ├── model.ckpt-248.index
+        └── train
+    </pre>
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li>mlacoustics (citations.bib)</li>
+      <li>wavenetpaper (citations.bib)</li>
+      <li>samplernnpaper (citations.bib)</li>
+      <li>magentaddsp (citations.bib)</li>
+      <li>dadabots (citations.bib)</li>
+      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
+      <li>prism (citations.bib)</li>
+      <li>prism-blog (citations.bib)</li>
+      <li>prism gh commits</li>
+      <li>my fork</li>
+      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
+      <li> conda </li>
+      <li> dadabots curation </li>
+      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
+      <li> chromaprint https://acoustid.org/chromaprint </li>
+      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+    </ol>
+  </body>
+</html>
+

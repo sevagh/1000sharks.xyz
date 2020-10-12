@@ -27,57 +27,7 @@
     <br>
     <br>
     I want to minimize the amount of visual/manual audio curation that I do, and rely only on the simple curation listed above.
-    <h2>Generating weird music with the 3-tier trained model</h2>
-    First, I use the trained model described earlier to generate audio clips at various epochs. I chose the epochs randomly - the ones before checkpoint 100 are trained only on Periphery, while the ones after checkpoint 100 are trained on a mix of Periphery and Mestis (aka "Mestiphery").
-    <br>
-    <br>
-    According to the dadabots' README<sup><a href="#ref">[18]</a></sup>, they don't necessarily accept that the latest training epoch is the best one. That's why I picked a variety of epochs:
-    <blockquote>
-      However, we found the latest checkpoint does not always create the best music. Instead we listen to the test audio generated at each checkpoint, choose our favorite checkpoint, and delete the newer checkpoints, before generating a huge batch with this script.
-    </blockquote>
-    I generated sequences of different durations. The generate commands are as follows:
-    <pre>
-    # epoch 83, 92 (periphery only)
     
-    $ python generate.py --output_path ./to-curate-periphery-epoch-83/gen.wav --checkpoint_path ./logdir/periphery_only/15.09.2020_17.36.46/model.ckpt-83 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
-    $ python generate.py --output_path ./to-curate-periphery-epoch-83-2/gen.wav --checkpoint_path ./logdir/periphery_only/15.09.2020_17.36.46/model.ckpt-83 --config_file ./default.config.json --num_seqs 100 --dur 8 --sample_rate 16000
-    $ python generate.py --output_path ./to-curate-periphery-epoch-92/gen.wav --checkpoint_path ./logdir/periphery_only/17.09.2020_21.55.43/model.ckpt-92 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
-    
-    # epoch 139, 165, 188 (mestiphery - mixed periphery + mestis)
-    
-    $ python generate.py --output_path ./to-curate-mestiphery-epoch-139/gen.wav --checkpoint_path ./logdir/periphery_only/18.09.2020_04.32.49/model.ckpt-139 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
-    $ python generate.py --output_path ./to-curate-mestiphery-epoch-165/gen.wav --checkpoint_path ./logdir/periphery_only/20.09.2020_10.04.13/model.ckpt-165 --config_file ./default.config.json --num_seqs 100 --dur 8 --sample_rate 16000
-    $ python generate.py --output_path ./mestiphery-to-curate-epoch-188/gen.wav --checkpoint_path ./logdir/periphery_only/20.09.2020_17.12.32/model.ckpt-188 --config_file ./default.config.json --num_seqs 30 --dur 10 --sample_rate 16000
-    </pre>
-    The results of these generation commands are directories named "to-curate-*" full of wav files:
-    <pre>
-    $ ls to-curate-*
-    to-curate-mestiphery-epoch-139:
-    gen_0.wav  gen_1.wav  gen_2.wav  gen_3.wav  gen_4.wav  gen_5.wav  gen_6.wav  gen_7.wav  gen_8.wav  gen_9.wav
-    
-    to-curate-mestiphery-epoch-165:
-    gen_0.wav   gen_28.wav  gen_46.wav  gen_64.wav  gen_82.wav
-    gen_10.wav  gen_29.wav  gen_47.wav  gen_65.wav  gen_83.wav
-    ...truncated...
-    
-    to-curate-mestiphery-epoch-188:
-    gen_0.wav   gen_12.wav  gen_15.wav  gen_18.wav  gen_20.wav  gen_23.wav  gen_26.wav  gen_29.wav  gen_4.wav  gen_7.wav
-    gen_10.wav  gen_13.wav  gen_16.wav  gen_19.wav  gen_21.wav  gen_24.wav  gen_27.wav  gen_2.wav   gen_5.wav  gen_8.wav
-    gen_11.wav  gen_14.wav  gen_17.wav  gen_1.wav   gen_22.wav  gen_25.wav  gen_28.wav  gen_3.wav   gen_6.wav  gen_9.wav
-    
-    to-curate-mestiphery-epoch-92:
-    gen_0.wav  gen_1.wav  gen_2.wav  gen_3.wav  gen_4.wav  gen_5.wav  gen_6.wav  gen_7.wav  gen_8.wav  gen_9.wav
-    
-    to-curate-periphery-epoch-83:
-    gen_0.wav  gen_2.wav  gen_4.wav  gen_6.wav  gen_8.wav
-    gen_1.wav  gen_3.wav  gen_5.wav  gen_7.wav  gen_9.wav
-    
-    to-curate-periphery-epoch-83-2:
-    gen_0.wav   gen_28.wav  gen_46.wav  gen_64.wav  gen_82.wav
-    gen_10.wav  gen_29.wav  gen_47.wav  gen_65.wav  gen_83.wav
-    gen_11.wav  gen_2.wav   gen_48.wav  gen_66.wav  gen_84.wav
-    </pre>
-    After listening to several of the files manually, I noticed that the lower epochs produce better, more cohesive, and longer bits of music. This to me indicates the failure of experiment 2, of mixing Periphery + Mestis and training for 250 epochs. This could be due to the nature of the training data - the neural network is trying to generate samples that minimize error for two distinct musical artists and styles, so it can resort to outputting nothing (to minimize numerical error between the two sets of training data). Also, like the Dadabots say, perhaps training for too long isn't beneficial.
     <h2>Chromaprint-based curation script</h2>
     The first tool I use in the curation script is librosa's trim silence<sup><a href="#ref">[20]</a></sup> to remove leading and trailing silence from the generated clips. This helps as the majority of clips have some musical content but lots of silence in between.
     <br>
@@ -144,17 +94,103 @@
     print('writing output file')
     soundfile.write("total_curated.wav", total_audio, args.sample_rate)
     </pre>
-    This gives a 24-minute song (when run on all of the generated clips mentioned previously). Although cacophonous and random, it actually sounds like (very weird) music. Also, it emphatically <b>does not</b> sound like Periphery or Mestis, the two bands which supplied the training data.
-    <h2>Coral Reefer</h2>
-    When life gives you lemons, you make lemonade. Given a 24-minute vague, experimental piece of music, I decided to take it all the way and apply several effects to maximize the impression that it's a piece created by a quirky human musician. The title of the song is "Coral Reefer", and the effects I want to apply are a mix of guitar effects from the stoner metal genre, and some aquatic/underwater effects to fit with the artist theme of "1000 sharks".
-    <br>
-    <br>
-    Effects:
-    <ul>
-      <li>phaser</li>
-      <li>flanger</li>
-    </ul>
 
+    <h2>Curating good 2-tier results</h2>
+    We saw on the 2-tier experiment page how we generated some very believable clips of music which sounded like the training album, Cannibal Corpse - A Skeletal Domain. There were 200 20-second clips generated, on which we'll apply the curation script.
+    <br>
+    <br>
+    We'll first copy all the generated clips from epoch 10/iteration 220,001 into a directory <code>to-curate/</code>:
+    <pre>
+    (1000sharks-curator) sevagh:dadabots_SampleRNN $ cp results_2t/models-two_tier-two_tier16k.py-expskeletal-domain_experiment-n_frames64-frame_size16-emb_size256-skip_connT-dim1024-n_rnn5-rnn_typeLSTM-q_levels256-q_typemu-law-batch_size32-weight_normT-learn_h0F-which_setskeletal-domain-lr0.001/samples/sample_e10_i220001_20_17\:19\:5* to-curate/
+    (1000sharks-curator) sevagh:dadabots_SampleRNN $ ls to-curate/ | head -n10
+    sample_e10_i220001_20_17:19:52_0.wav
+    sample_e10_i220001_20_17:19:52_10.wav
+    sample_e10_i220001_20_17:19:52_11.wav
+    sample_e10_i220001_20_17:19:52_12.wav
+    sample_e10_i220001_20_17:19:52_13.wav
+    sample_e10_i220001_20_17:19:52_14.wav
+    sample_e10_i220001_20_17:19:52_15.wav
+    sample_e10_i220001_20_17:19:52_16.wav
+    sample_e10_i220001_20_17:19:52_17.wav
+    sample_e10_i220001_20_17:19:52_18.wav
+    </pre>
+    Then, we'll run the chromaprint-based curation script. This logs a lot of info (especially when comparing 200 clips against each other, i.e. 200*200 comparisons):
+    <pre>
+    (1000sharks-curator) sevagh:dadabots_SampleRNN $ python ~/repos/1000sharks.xyz/samplernn-scripts/curation.py ./to-curate/
+    ...truncated output
+    concatenating audio by similarity
+    concatenating audio by similarity
+    writing output file
+    (1000sharks-curator) sevagh:dadabots_SampleRNN $
+    </pre>
+    This produces a file, <code>total_curated.wav</code>:
+    <pre>
+    (1000sharks-curator) sevagh:dadabots_SampleRNN $ mpv total_curated.wav
+    Resuming playback. This behavior can be disabled with --no-resume-playback.
+     (+) Audio --aid=1 (pcm_s16le 1ch 16000Hz)
+     AO: [pulse] 16000Hz mono 1ch s16
+     A: 00:00:13 / 00:32:00 (0%)
+    </pre>
+    It sounds great - 32 minutes of fake Cannibal Corpse. I'll name this song "DOMAINAL SKELETON", and it's included as one of the final songs in the demo.
+
+    <h2>Salvaging bad 3-tier results</h2>
+    First, I use the trained 3-tier SampleRNN model described earlier to generate audio clips at various epochs. I chose the epochs randomly - the ones before checkpoint 100 are trained only on Periphery, while the ones after checkpoint 100 are trained on a mix of Periphery and Mestis (aka "Mestiphery").
+    <br>
+    <br>
+    According to the dadabots' README<sup><a href="#ref">[18]</a></sup>, they don't necessarily accept that the latest training epoch is the best one. That's why I picked a variety of epochs:
+    <blockquote>
+      However, we found the latest checkpoint does not always create the best music. Instead we listen to the test audio generated at each checkpoint, choose our favorite checkpoint, and delete the newer checkpoints, before generating a huge batch with this script.
+    </blockquote>
+    I generated sequences of different durations. The generate commands are as follows:
+    <pre>
+    # epoch 83, 92 (periphery only)
+    
+    $ python generate.py --output_path ./to-curate-periphery-epoch-83/gen.wav --checkpoint_path ./logdir/periphery_only/15.09.2020_17.36.46/model.ckpt-83 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
+    $ python generate.py --output_path ./to-curate-periphery-epoch-83-2/gen.wav --checkpoint_path ./logdir/periphery_only/15.09.2020_17.36.46/model.ckpt-83 --config_file ./default.config.json --num_seqs 100 --dur 8 --sample_rate 16000
+    $ python generate.py --output_path ./to-curate-periphery-epoch-92/gen.wav --checkpoint_path ./logdir/periphery_only/17.09.2020_21.55.43/model.ckpt-92 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
+    
+    # epoch 139, 165, 188 (mestiphery - mixed periphery + mestis)
+    
+    $ python generate.py --output_path ./to-curate-mestiphery-epoch-139/gen.wav --checkpoint_path ./logdir/periphery_only/18.09.2020_04.32.49/model.ckpt-139 --config_file ./default.config.json --num_seqs 10 --dur 30 --sample_rate 16000
+    $ python generate.py --output_path ./to-curate-mestiphery-epoch-165/gen.wav --checkpoint_path ./logdir/periphery_only/20.09.2020_10.04.13/model.ckpt-165 --config_file ./default.config.json --num_seqs 100 --dur 8 --sample_rate 16000
+    $ python generate.py --output_path ./mestiphery-to-curate-epoch-188/gen.wav --checkpoint_path ./logdir/periphery_only/20.09.2020_17.12.32/model.ckpt-188 --config_file ./default.config.json --num_seqs 30 --dur 10 --sample_rate 16000
+    </pre>
+    The results of these generation commands are directories named "to-curate-*" full of wav files:
+    <pre>
+    $ ls to-curate-*
+    to-curate-mestiphery-epoch-139:
+    gen_0.wav  gen_1.wav  gen_2.wav  gen_3.wav  gen_4.wav  gen_5.wav  gen_6.wav  gen_7.wav  gen_8.wav  gen_9.wav
+    
+    to-curate-mestiphery-epoch-165:
+    gen_0.wav   gen_28.wav  gen_46.wav  gen_64.wav  gen_82.wav
+    gen_10.wav  gen_29.wav  gen_47.wav  gen_65.wav  gen_83.wav
+    ...truncated...
+    
+    to-curate-mestiphery-epoch-188:
+    gen_0.wav   gen_12.wav  gen_15.wav  gen_18.wav  gen_20.wav  gen_23.wav  gen_26.wav  gen_29.wav  gen_4.wav  gen_7.wav
+    gen_10.wav  gen_13.wav  gen_16.wav  gen_19.wav  gen_21.wav  gen_24.wav  gen_27.wav  gen_2.wav   gen_5.wav  gen_8.wav
+    gen_11.wav  gen_14.wav  gen_17.wav  gen_1.wav   gen_22.wav  gen_25.wav  gen_28.wav  gen_3.wav   gen_6.wav  gen_9.wav
+    
+    to-curate-mestiphery-epoch-92:
+    gen_0.wav  gen_1.wav  gen_2.wav  gen_3.wav  gen_4.wav  gen_5.wav  gen_6.wav  gen_7.wav  gen_8.wav  gen_9.wav
+    
+    to-curate-periphery-epoch-83:
+    gen_0.wav  gen_2.wav  gen_4.wav  gen_6.wav  gen_8.wav
+    gen_1.wav  gen_3.wav  gen_5.wav  gen_7.wav  gen_9.wav
+    
+    to-curate-periphery-epoch-83-2:
+    gen_0.wav   gen_28.wav  gen_46.wav  gen_64.wav  gen_82.wav
+    gen_10.wav  gen_29.wav  gen_47.wav  gen_65.wav  gen_83.wav
+    gen_11.wav  gen_2.wav   gen_48.wav  gen_66.wav  gen_84.wav
+    </pre>
+    After listening to several of the files manually, I noticed that the lower epochs produce better, more cohesive, and longer bits of music. This to me indicates the failure of experiment 2, of mixing Periphery + Mestis and training for 250 epochs. This could be due to the nature of the training data - the neural network is trying to generate samples that minimize error for two distinct musical artists and styles, so it can resort to outputting nothing (to minimize numerical error between the two sets of training data). Also, like the Dadabots say, perhaps training for too long isn't beneficial.
+    <br>
+    <br>
+    This gives a 24-minute song (when run on all of the generated clips mentioned previously). Although cacophonous and random, it actually sounds like (very weird) music. Also, it emphatically <b>does not</b> sound like Periphery or Mestis, the two bands which supplied the training data, so I didn't include it in the real results:
+    <br>
+    <audio controls>
+      <source src="coral_reefer.wav" type="audio/wav"</source>
+    </audio>
     <h1 id="ref">References</h2>
     <ol>
       <li>mlacoustics (citations.bib)</li>
