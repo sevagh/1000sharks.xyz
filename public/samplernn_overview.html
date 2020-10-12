@@ -8,8 +8,8 @@
   </head>
   <body id="index">
     <div class="navbar">
-      <a href="./">MUMT 618 report</a>
-      <a href="./demo.html">1000sharks demo</a>
+      <a href="./mumt618_report.html">MUMT 618 report</a>
+      <a href="./">1000sharks demo</a>
     </div>
 
     <h1>SampleRNN overview</h1>
@@ -128,6 +128,175 @@ We use a Softmax because we found that better results were obtained by discretiz
     <h3>Preprocessing</h3>
     The preprocessing uses the same mu-law encoding as the WaveNet but without the one-hot encoding. The 256-bit quantized integer is used directly instead of converting it into a 256-length vector.
     <h3>Training layers - stack of hierarchical RNN modules</h3>
+    The SampleRNN model consists of 3 tiers:
+    <ul>
+	    <li>Sample MLP (in samplernn/sample_mlp.py)</li>
+	    <li>Frame RNN (in samplernn/frame_rnn.py)</li>
+	    <li>Big Frame RNN (in samplernn/frame_rnn.py)</li>
+    </ul>
+    <h4>Tier 1: Sample multilayer perceptron</h4>
+    The first tier is Sample MLP, which is a multilayer perceptron. The code for the Sample MLP is:
+    <pre>
+    self.inputs = tf.keras.layers.Conv1D(                                  
+        filters=self.dim, kernel_size=frame_size, use_bias=False           
+    )                                                                      
+    self.hidden = tf.keras.layers.Dense(self.dim, activation='relu')       
+    self.outputs = tf.keras.layers.Dense(self.q_levels, activation='relu') 
+    </pre>
+    An MLP is a simpler, more primitive precursor to the more complex CNN (convolutional neural network like WaveNet) or RNN <sup><a href="#ref">MLPs</a></sup>. This choice is described in the paper as saving computation cost since the sample-to-sample relationship among nearby samples is probably a simple one. They're implying that the more complex non-linearities of music are in the higher tiers, and that small local clusters of samples have a simpler relationships.
+    <br>
+    <br>
+    Interesting to note is that the Sample MLP takes conditioning (i.e. external influence) from the results of the Frame RNN one tier higher (in samplernn/sample_mlp.py - some parts omitted):
+    <pre>
+    class SampleMLP(tf.keras.layers.Layer):
+    
+        def __init__(self, frame_size, dim, q_levels, emb_size):
+            self.inputs = tf.keras.layers.Conv1D(
+                filters=self.dim, kernel_size=frame_size, use_bias=False
+            )
+            self.hidden = tf.keras.layers.Dense(self.dim, activation='relu')
+            self.outputs = tf.keras.layers.Dense(self.q_levels, activation='relu')
+
+        def call(self, inputs, conditioning_frames):                                 
+            batch_size = tf.shape(inputs)[0]                                         
+                                                                                     
+            inputs = self.embedding(tf.reshape(inputs, [-1]))                        
+            inputs = self.inputs(tf.reshape(inputs, [batch_size, -1, self.q_levels]))
+                                                                                     
+            hidden = self.hidden(inputs + conditioning_frames)                       
+            return self.outputs(hidden)                                              
+    </pre>
+    Note how the externally-passed conditioning is added to the model's own hidden layers. Another notable feature is that the inputs to the MLP have a 1D convolution applied. This is not described in the paper, but hybrid Conv1D-MLP models do seem to exist in literature<sup><a href="#ref">booold claim</a></sup>. It looks to me like in this implementation choice (PRiSM), they applied a hybrid Conv1D/MLP approach, especially since the reference SampleRNN implementation<sup><a href="#ref">soroush</a></sup> does not have any 1D convolutions in the SampleRNN code.
+    <br>
+    <br>
+    The summary of the first tier is that it establishes the lowest level of sample-to-sample relations in the input waveforms, just like the first 1D convolution of WaveNet.
+    <h4>GRU and LSTM - different types of RNN</h4>
+    The SampleRNN authors used different choices (GRU and LSTM) of memory cell in the RNN, and concluded that the GRU performed best. Let's take a detour into this excellent overview paper on the use of GRU vs. LSTM gates in RNNs<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
+    <br>
+    <br>
+    Recall that in the WaveNet overview, I talked about the vanishing gradient problem and how they used skip connections in the layer of convolutions to solve it. As the network gets deeper, small gradients tend to 0 and the model no longer knows how to improve. There need to be backward connections that jump several layers to connect the output closer to the input.
+    <br>
+    <br>
+    In a recurrent neural network, this backward memory to solve the vanishing gradient problem is solved by using LSTM (long short-term memory) units<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>:
+    <blockquote>
+    Unlike to the traditional recurrent unit which overwrites its content at each time-step (see Eq. (2)), an  LSTM  unit  is  able  to  decide  whether  to  keep  the  existing  memory  via  the  introduced  gates.
+    Intuitively, if the LSTM unit detects an important feature from an input sequence at early stage, it easily carries this information (the existence of the feature) over a long distance, hence, capturing potential long-distance dependencies.
+    </blockquote>
+    The introduction to GRU describes the importance of GRUs to capturing dependencies on different time scales:
+    <blockquote>
+    A gated recurrent unit (GRU) was proposed by Cho et al. [2014] to make each recurrent unit to adaptively capture dependencies of different time scale
+    </blockquote>
+    The actual gated units resemble some gated logic processors:
+    <br>
+    <img src="samplernn_gated_rnn.png" width=600px />
+    <br>
+    <br>
+    In the WaveNet diagram and paper, I described how PixelCNN started using non-linear functions, sigmoid and tanh, to model non-linearities in the same way that an LSTM did in PixelRNN. Here, we come full circle and learn that the sigmoid and tanh functions are also key inside the implementation of LSTM and GRU units<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
+    <br>
+    <br>
+    The authors conclude that both GRU- and LSTM-RNNs are an improvement over regular RNNs for modeling more complex relationships, and they demonstrate that GRUs train more efficiently.
+    <h4>Tier 2 and 3: Frame RNNs, frame size = 16,64</h4>
+    The next tiers are cascaded Frame RNNs with a frame size of 16 and 64 respectively (frame size 64 is referred to as the "big frame" in the code and paper). These are RNNs with the specified unit type (GRU in the default config, as mentioned):
+    <pre>
+    class FrameRNN(tf.keras.layers.Layer):
+        def __init__(self, rnn_type, frame_size, num_lower_tier_frames, num_layers, dim, q_levels, skip_conn):
+            super(FrameRNN, self).__init__()
+            self.skip_conn = skip_conn
+            self.inputs = tf.keras.layers.Dense(self.dim)
+            self.rnn = RNN(rnn_type, self.dim, self.num_layers, self.skip_conn)
+    
+        def build(self, input_shape):
+            self.upsample = tf.Variable(
+                tf.initializers.GlorotNormal()(
+                    shape=[self.num_lower_tier_frames, self.dim, self.dim]),
+                name="upsample",
+            )
+    
+        def call(self, inputs, conditioning_frames=None):
+            batch_size = tf.shape(inputs)[0]
+    
+            input_frames = tf.reshape(inputs, [
+                batch_size,
+                tf.shape(inputs)[1] // self.frame_size,
+                self.frame_size
+            ])
+            input_frames = ( (input_frames / (self.q_levels / 2.0)) - 1.0 ) * 2.0
+            num_steps = tf.shape(input_frames)[1]
+    
+            input_frames = self.inputs(input_frames)
+    
+            if conditioning_frames is not None:
+                input_frames += conditioning_frames
+    
+            frame_outputs = self.rnn(input_frames)
+    </pre>
+    Interesting to note is that skip connections are used in the code but not mentioned in the paper. As covered, skip connections in WaveNet were to solve the vanishing gradient problem - but, in SampleRNN, the use of GRUs (or LSTMs) in the RNN should hypothetically solve the vanishing gradient problem already.
+    <br>
+    <br>
+    We also see that the FrameRNNs can be conditioned externally just like the first tier, Sample MLP. In practise, the big Frame RNN is unconditioned, but its decisions are used to condition the small Frame RNN and finally the Sample MLP. Putting it all together in samplernn/model.py:
+    <pre>
+    class SampleRNN(tf.keras.Model):
+        def __init__(self, batch_size, frame_sizes, q_levels, q_type,
+                     dim, rnn_type, num_rnn_layers, seq_len, emb_size, skip_conn):
+            super(SampleRNN, self).__init__()
+            self.big_frame_size = frame_sizes[1]
+            self.frame_size = frame_sizes[0]
+    
+            self.big_frame_rnn = FrameRNN(
+                frame_size = self.big_frame_size,
+    	    )
+    
+            self.frame_rnn = FrameRNN(
+                frame_size = self.frame_size,
+    	    )
+    
+            self.sample_mlp = SampleMLP(
+                self.frame_size, self.dim, self.q_levels, self.emb_size
+            )
+    </pre>
+    <h4>Generating audio</h4>
+    Following immediately from the last snippet, we can see the SampleRNN functions for creating a waveform:
+    <pre>
+        # Inference
+        @tf.function
+        def inference_step(self, inputs, temperature):
+            num_samps = self.big_frame_size
+            samples = inputs
+            big_frame_outputs = self.big_frame_rnn(tf.cast(inputs, tf.float32))
+            for t in range(num_samps, num_samps * 2):
+	        frame_inputs = samples[:, t - self.frame_size : t, :]
+	        big_frame_output_idx = (t // self.frame_size) % (
+                    self.big_frame_size // self.frame_size
+                )
+                frame_outputs = self.frame_rnn(
+                    tf.cast(frame_inputs, tf.float32),
+                    conditioning_frames=unsqueeze(big_frame_outputs[:, big_frame_output_idx, :], 1))
+                sample_inputs = samples[:, t - self.frame_size : t, :]
+                sample_outputs = self.sample_mlp(
+                    sample_inputs,
+                    conditioning_frames=unsqueeze(frame_outputs[:, frame_output_idx, :], 1))
+    
+        def call(self, inputs, training=True, temperature=1.0):
+            if training==True:
+                # UPPER TIER
+                big_frame_outputs = self.big_frame_rnn(
+                    tf.cast(inputs, tf.float32)[:, : -self.big_frame_size, :]
+                )
+                # MIDDLE TIER
+                frame_outputs = self.frame_rnn(
+                    tf.cast(inputs, tf.float32)[:, self.big_frame_size-self.frame_size : -self.frame_size, :],
+                    conditioning_frames=big_frame_outputs,
+                )
+                # LOWER TIER (SAMPLES)
+                sample_output = self.sample_mlp(
+                    inputs[:, self.big_frame_size - self.frame_size : -1, :],
+                    conditioning_frames=frame_outputs,
+                )
+                return sample_output
+            else:
+                return self.inference_step(inputs, temperature)
+    </pre>
+    We can see the results of the 3 tiers cascading down into the lower tier, influencing the generation of the final waveform. The actual waveform results are created by the <code>call</code> functions of the Sample MLP and Frame RNNs shown above.
     <h3>Loss function</h3>
     The loss function and training parameter optimization code is very similar to the WaveNet code, down to the optimizer factory. From <code>train.py</code>:
     <pre>
@@ -237,7 +406,6 @@ We use a Softmax because we found that better results were obtained by discretiz
     <br>
     <br>
     Note a detail of SampleRNN is that they're using the keras EarlyStopping<sup><a href="#ref">keras earlystop</a></sup> which stops training if it predicts that the model is not improving enough to be worthwhile. In WaveNet, the training proceeds for as many steps as the user requested.
-    <h3>Generating audio</h3>
     <h1 id="ref">References</h2>
     <ol>
       <li><a href="https://arxiv.org/abs/1612.07837">SampleRNN: An Unconditional End-to-End Neural Audio Generation Model - arXiv.org</a></li>
