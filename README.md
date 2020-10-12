@@ -22,7 +22,11 @@ $ tree -L 1
 ### ML models
 
 The machine learning models used are:
-* https://github.com/sevagh/prism-samplernn for music generation
+* https://github.com/sevagh/dadabots_sampleRNN for music generation
+* https://github.com/sevagh/prism-samplernn for (less successful) music generation
+* https://github.com/sevagh/tensorflow-wavenet (for wavenet deep dive)
 * https://github.com/sevagh/stylegan2 for album art generation
 
-N.b. that the links above are my own forks of the original models, but I have only made some very minor quality-of-life commits (and no other significant modifications from the forks).
+N.b. that the links above are all my own forks of the original models, but I have only made some very minor quality-of-life commits (and no other significant modifications from the forks).
+
+The reason I forked them all is to ensure they stick around for future reference from this repo.

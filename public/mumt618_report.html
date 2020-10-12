@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./">MUMT 618 report</a>
+      <a href="./demo.html">1000sharks demo</a>
+    </div>
+
+    <h1>1000 sharks</h1>
+    <h3>An AI music experience, prepared by Sevag for MUMT 618, Fall 2020</h3>
+
+    <p>
+    Machine learning and deep learning techniques in recent years have an increasing presence in the field of musical acoustics<sup><a href="#ref">[1]</a></sup>. As a preliminary introduction to generating music using neural networks, you can view my <a href="paper_presentation_final.pdf" type="application/pdf" title="Neural audio synthesis">paper presentation</a> introducing WaveNet<sup><a href="#ref">[2]</a></sup>, SampleRNN<sup><a href="#ref">[3]</a></sup>, and other novel approaches to neural audio.
+    <br>
+    <br>
+    In the presentation, I outlined that there exist both unconstrained, unstructured models for generating audio in the waveform domain (resulting in babbling or confusing outputs), and structured physical computational models that have been used in traditional audio synthesis (that don't sound very natural).
+    <br>
+    <br>
+    In this project, I'll use SampleRNN for unstructured neural audio synthesis. From this diagram, I'll be targeting the top left image:
+    <figure>
+    <img src="6_5_ml_acoustics.jpg" width=400px/>
+    <figcaption>By augmenting ML methods (top left) with physical models (bottom right) to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained <sup><a href="#ref">[1]</a></sup></figcaption>
+    </figure>
+    </p>
+
+    <h1>Motivation</h1>
+
+    <p>
+    The dadabots<sup><a href="#ref">[5]</a></sup> have been creating music with neural networks, trained on the music of specific artists:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/MwtVkPKx3RA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <br>
+    My idea is to imitate the dadabots by training SampleRNN to create original heavy metal music. To supplement the illusion of a "real" music artist, I also want to generate album art using additional AI techniques; as these are not directly related to musical acoustics, they'll occupy a small section at the bottom of this report.
+    <br>
+    <br>
+    To explain the overall aesthetic/theme of death metal + sharks:
+    <br>
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/EzCbsw3WgTk?start=85" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+    <h1>Deeper dives</h1>
+    Despite the "black box" nature of WaveNet and SampleRNN, we can do a below-the-surface examination of the models (including training and generation steps) to get a better sense of:
+    <ol>
+	    <li>Input data and preprocessing - how are the training waveforms represented?</li>
+	    <li>The model/neural network itself - what are WaveNet and SampleRNN computing?</li>
+	    <li>Loss function and iterative training/optimization - how do WaveNet/SampleRNN know that one set of parameters is better than the other? What defines the "correct" output of a waveform?</li>
+	    <li>Generation - after training a model with low loss, how do WaveNet and SampleRNN use the trained model to generate brand new waveforms of audio?</li>
+    </ol>
+    <a href="/wavenet_overview.html"><h2>WaveNet overview</h2></a>
+    <a href="/samplernn_overview.html"><h2>SampleRNN overview</h2></a>
+
+    <h1>Experiment setup</h1>
+    A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.
+
+    <h2>Hardware and OS setup</h2>
+
+    I ran all of the training and experiments on my personal desktop computer, consisting of:
+    <ul>
+      <li>AMD Ryzen 7 3700X 8c/16t processor</li>
+      <li>32GB RAM</li>
+      <li>1TB NVME storage</li>
+      <li>NVIDIA RTX 2070 SUPER GPU</li>
+    </ul>
+    The OS is Fedora 32, and NVIDIA drivers and CUDA toolkit were installed using negativo17's Fedora-nvidia repositories<sup><a href="#ref">[11]</a></sup>.
+
+    <a href="./samplernn_3tier_experiments.html"><h2>3-tier SampleRNN experiments</h2></a>
+
+    <a href="./samplernn_2tier_experiments.html"><h2>2-tier SampleRNN experiments</h2></a>
+
+    <h2>(tentative) WaveNet experiments</h2></a>
+
+    This is an optional part of the project, since SampleRNN is considered better at generating music. It may still be instructive to get an idea of how to train WaveNet and to verify some results.
+    
+    <a href="./curation.html"><h1>Curating neural generated results</h1></a>
+
+    <a href="./album_art.html"><h1>Album art generation</h1></a>
+
+    <h1>Results & conclusion</h1>
+    It took 1 week to complete the training on Periphery only. My limitation is computational power. There are issues today about "AI democratization", and my experiments demonstrate the difficulty of black-box computational models where the large companies or labs publishing papers have massive advantages in hardware and in-house neural network/machine learning expertise (FIND REFERENCE FAANGMAN NEURAL NETWORKS).
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li>mlacoustics (citations.bib)</li>
+      <li>wavenetpaper (citations.bib)</li>
+      <li>samplernnpaper (citations.bib)</li>
+      <li>magentaddsp (citations.bib)</li>
+      <li>dadabots (citations.bib)</li>
+      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
+      <li>prism (citations.bib)</li>
+      <li>prism-blog (citations.bib)</li>
+      <li>prism gh commits</li>
+      <li>my fork</li>
+      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
+      <li> conda </li>
+      <li> dadabots curation </li>
+      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
+      <li> chromaprint https://acoustid.org/chromaprint </li>
+      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+    </ol>
+  </body>
+</html>
+
