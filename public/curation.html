@@ -13,7 +13,7 @@
     </div>
 
     <h1>Curating neural generated results</h1>
-    An important thing to note is that the Dadabots focus heavily on curating<sup><a href="#ref">[16]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music.
+    An important thing to note is that the Dadabots focus heavily on curating<sup><a href="#ref">[1]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music.
     <br>
     <br>
     The goal of my automated curation script is to:
@@ -28,10 +28,10 @@
     I want to minimize the amount of visual/manual audio curation that I do, and rely only on the simple curation listed above.
     
     <h2>Chromaprint-based curation script</h2>
-    The first tool I use in the curation script is librosa's trim silence<sup><a href="#ref">[20]</a></sup> to remove leading and trailing silence from the generated clips. This helps as the majority of clips have some musical content but lots of silence in between.
+    The first tool I use in the curation script is librosa's trim silence<sup><a href="#ref">[2]</a></sup> to remove leading and trailing silence from the generated clips. This helps as the majority of clips have some musical content but lots of silence in between.
     <br>
     <br>
-    The next thing I need is to be able to compare the pieces of musical content/non-silence with each other, to concatenate clips by similarity. This should have the effect of creating a maximally cohesive piece of music. I settled for the chromaprint<sup><a href="#ref">[21] chromaprint</a></sup>. Using chromaprints, we can get an array of 32-bit integers representing the "acoustic fingerprint" of a waveform.
+    The next thing I need is to be able to compare the pieces of musical content/non-silence with each other, to concatenate clips by similarity. This should have the effect of creating a maximally cohesive piece of music. I settled for the chromaprint<sup><a href="#ref">[3]</a></sup>. Using chromaprints, we can get an array of 32-bit integers representing the "acoustic fingerprint" of a waveform.
     <br>
     <br>
     Combining these two elements is the first job of the curation script:
@@ -53,7 +53,7 @@
                 'chromaprint': int_fingerprint,
         }
     </pre>
-    This code extracts sequences of non-silent music from the generated clips, and stores their chromaprints. We also need a way to compare the arrays of 32-bit integer chromaprints, to be able to rank the generated music clips by their similarity with other clips. For this I borrowed some code that computes a correlation between lists of integer chromaprints<sup><a href="#ref">[22]</a></sup>. I rank clips by maximum correlation in their chromaprints:
+    This code extracts sequences of non-silent music from the generated clips, and stores their chromaprints. We also need a way to compare the arrays of 32-bit integer chromaprints, to be able to rank the generated music clips by their similarity with other clips. For this I borrowed some code that computes a correlation between lists of integer chromaprints<sup><a href="#ref">[4]</a></sup>. I rank clips by maximum correlation in their chromaprints:
     <pre>
     # naive O(n^2) comparison
     for filename1, data1 in all_audio.items():
@@ -136,7 +136,7 @@
     First, I use the trained 3-tier SampleRNN model described earlier to generate audio clips at various epochs. I chose the epochs randomly - the ones before checkpoint 100 are trained only on Periphery, while the ones after checkpoint 100 are trained on a mix of Periphery and Mestis (aka "Mestiphery").
     <br>
     <br>
-    According to the dadabots' README<sup><a href="#ref">[18]</a></sup>, they don't necessarily accept that the latest training epoch is the best one. That's why I picked a variety of epochs:
+    According to the dadabots' README<sup><a href="#ref">[1]</a></sup>, they don't necessarily accept that the latest training epoch is the best one. That's why I picked a variety of epochs:
     <blockquote>
       However, we found the latest checkpoint does not always create the best music. Instead we listen to the test audio generated at each checkpoint, choose our favorite checkpoint, and delete the newer checkpoints, before generating a huge batch with this script.
     </blockquote>
@@ -192,22 +192,10 @@
     </audio>
     <h1 id="ref">References</h2>
     <ol>
-      <li>mlacoustics (citations.bib)</li>
-      <li>wavenetpaper (citations.bib)</li>
-      <li>samplernnpaper (citations.bib)</li>
-      <li>magentaddsp (citations.bib)</li>
-      <li>dadabots (citations.bib)</li>
-      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
-      <li>prism (citations.bib)</li>
-      <li>prism-blog (citations.bib)</li>
-      <li>prism gh commits</li>
-      <li>my fork</li>
-      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
-      <li> conda </li>
-      <li> dadabots curation </li>
-      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
-      <li> chromaprint https://acoustid.org/chromaprint </li>
-      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN#creative-workflow">dadabots_sampleRNN - Creative workflow</a></li>
+      <li><a href="https://librosa.org/doc/main/generated/librosa.effects.trim.html">librosa.effects.trim - librosa 0.8.0 documentation</a></li>
+      <li><a href="https://acoustid.org/chromaprint">Chromaprint | AcoustID</a></li>
+      <li><a href="https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207">Audio signals: Comparison</a></li>
     </ol>
   </body>
 </html>

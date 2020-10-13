@@ -13,9 +13,9 @@
     </div>
 
     <h1>Album art generation</h1>
-    SampleRNN, which I've shown so far, is a model for unconditional music generation. NVIDIA's StyleGAN2<sup><a href="#ref">stylegan2</a></sup> is a model for unconditional image generation. I'll use StyleGAN2 to create the fake album art for 1000sharks. Given that both are unconditional waveform generators (audio = 1D waveform with an implicit time axis, image = 2D matrix, non-temporal), the training and generation procedures are broadly similar to what has been described.
+    SampleRNN, which I've shown so far, is a model for unconditional music generation. NVIDIA's StyleGAN2<sup><a href="#ref">[1]</a></sup> is a model for unconditional image generation. I'll use StyleGAN2 to create the fake album art for 1000sharks. Given that both are unconditional waveform generators (audio = 1D waveform with an implicit time axis, image = 2D matrix, non-temporal), the training and generation procedures are broadly similar to what has been described.
     <h2>Image pre-preprocessing script</h2>
-    StyleGAN2 expects the training data to be square images with the same power-of-two dimension. I wrote a Python script that automatically extracts the square middle <code>dim</code> pixels of an image and saves them as png files using Pillow<sup><a href="#ref">pil</a></sup>:
+    StyleGAN2 expects the training data to be square images with the same power-of-two dimension. I wrote a Python script that automatically extracts the square middle <code>dim</code> pixels of an image and saves them as png files using Pillow<sup><a href="#ref">[2]</a></sup>:
     <pre>
     from PIL import Image, ImageOps
 
@@ -34,7 +34,7 @@
             thumbnail.save(os.path.join(args.outpath, '{0}.png'.format(seq)))
             seq += 1
     </pre>
-    I've committed this script (crop_images.py) to my fork of StyleGAN2<sup><a href="#ref">my-stylegan2-fork</a></sup>. One thing to note is that I had to run <code>conda install libwebp</code> in my Conda environment before installing Pillow to support the webp image format.
+    I've committed this script (crop_images.py) to my fork of StyleGAN2<sup><a href="#ref">[3]</a></sup>. One thing to note is that I had to run <code>conda install libwebp</code> in my Conda environment before installing Pillow to support the webp image format.
     <br>
     <br>
     Early on this page I mentioned vague "difficulties" when relying on older machine learning libraries. I encountered many of these with StyleGAN2:
@@ -54,7 +54,7 @@
       <li>After encountering several resource exhaustion crashes, I had to allow GPU memory growth, similar to the modification I had to make to SampleRNN: <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code> </li>
     </ul>
     <h2>Preprocessing, training, and generation commands</h2>
-    The training data consists of shark images (saved from a Google image search), and heavy metal album covers (saved from the following article<sup><a href="#ref">article https://www.loudersound.com/features/the-50-best-death-metal-albums-ever</a></sup>.
+    The training data consists of shark images (saved from a Google image search<sup><a href="#ref">[4]</a></sup>), and heavy metal album covers (saved from the following article<sup><a href="#ref">[5]</a></sup>).
     <br>
     <br>
     After downloading these to a directory, I ran the following commands:
@@ -71,7 +71,7 @@
     # generate 1000 images, randomly seeded, for curation
     $ python run_generator.py generate-images --seeds=0-999 --truncation-psi=1.0   --network=results/00008-stylegan2-1000sharks-1gpu-config-e/network-final.pkl
     </pre>
-    I chose the training parameters <code>config-e</code> (the second-best configuration - config-f is the best configuration in StyleGAN2 but is a larger neural network that's much slower to train - these are explained <a href="link-to-think">TODO HERE</a>), with kimg=1000 (this is similar to the epochs of SampleRNN, in that more is probably better and increases the training time).
+    I chose the training parameters <code>config-e</code> (the second-best configuration - config-f is the best configuration in StyleGAN2 but is a larger neural network that's much slower to train - these are explained in the source code here<sup><a href="#ref">[6]</a></sup>), with kimg=1000 (this is similar to the epochs of SampleRNN, in that more is probably better and increases the training time).
     <br>
     <br>
     After 31 hours of training, the model was done:
@@ -87,7 +87,7 @@
     network-snapshot-001000        time 11m 41s      fid50k 195.7975
     dnnlib: Finished training.training_loop.training_loop() in 1d 07h 59m.
     </pre>
-    The logs to stdout are similar to SampleRNN (kimg = epoch, fid50k = accuracy measure where lower is better<a href="otherthing">https://machinelearningmastery.com/how-to-implement-the-frechet-inception-distance-fid-from-scratch/</a>).
+    The logs to stdout are similar to SampleRNN (kimg = epoch, fid50k = accuracy measure where lower is better<a href="#ref">[7]</a>).
     <h2>Curated album art</h2>
     There are 9 results I liked the most and included in the project:
     <br>
@@ -100,26 +100,16 @@
     <img src="curated_album_art_7.png"/>
     <img src="curated_album_art_8.png"/>
     <img src="curated_album_art_9.png"/>
-    <h1>Results & conclusion</h1>
 
     <h1 id="ref">References</h2>
     <ol>
-      <li>mlacoustics (citations.bib)</li>
-      <li>wavenetpaper (citations.bib)</li>
-      <li>samplernnpaper (citations.bib)</li>
-      <li>magentaddsp (citations.bib)</li>
-      <li>dadabots (citations.bib)</li>
-      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
-      <li>prism (citations.bib)</li>
-      <li>prism-blog (citations.bib)</li>
-      <li>prism gh commits</li>
-      <li>my fork</li>
-      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
-      <li> conda </li>
-      <li> dadabots curation </li>
-      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
-      <li> chromaprint https://acoustid.org/chromaprint </li>
-      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+      <li><a href="https://github.com/NVlabs/stylegan2">NVlab/stylegan2: StyleGAN2 - Official TensorFlow Implementation - GitHub</a></li>
+      <li><a href="https://python-pillow.org/">Python Pillow - Python Imaging Library</a></li>
+      <li><a href="https://github.com/sevagh/stylegan2">sevagh/stylegan2: StyleGAN2 - GitHub fork</a></li>
+      <li><a href="https://www.google.com/search?q=sharks&source=lnms&tbm=isch&sa=X&ved=2ahUKEwji3rrKrbDsAhWDbc0KHXRZCJUQ_AUoAXoECDUQAw&biw=1024&bih=517&dpr=2.5">sharks - Google Search</a></li>
+      <li><a href="https://www.loudersound.com/features/the-50-best-death-metal-albums-ever">50 best death metal albums ever | Louder</a></li>
+      <li><a href="https://github.com/NVlabs/stylegan2/blob/7d3145d23013607b987db30736f89fb1d3e10fad/run_training.py#L26">stylegan2/run_training.py at 7d3145d23013607b987db30736f89fb1d3e10fad · NVlabs/stylegan2</a></li>
+      <li><a href="https://machinelearningmastery.com/how-to-implement-the-frechet-inception-distance-fid-from-scratch">How to Implement the Frechet Inception Distance (FID) for Evaluating GANs</a></li>
     </ol>
   </body>
 </html>
