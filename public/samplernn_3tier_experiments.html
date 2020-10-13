@@ -14,7 +14,7 @@
 
     <h1>3-tier SampleRNN experiments</h1>
 
-    The RNCM (Royal Northern College of Music) PRiSM (Practice and Research in Science and Music) lab released a modern implementation of 3-tier SampleRNN<sup><a href="#ref">[7]</a></sup>:
+    The RNCM (Royal Northern College of Music) PRiSM (Practice and Research in Science and Music) lab released a modern implementation of 3-tier SampleRNN<sup><a href="#ref">[1]</a></sup>:
     <blockquote>
     PRiSM is shortly going to publish its own implementation, using TensorFlow 2, and we’ll be explaining the features of the PRiSM SampleRNN in our next instalment – when we will also make the code available on PRiSM’s GitHub pages, along with a number of pretrained and optimised models.
     </blockquote>
@@ -22,15 +22,15 @@
 
     <h2>Python setup + minor code tweaks</h2>
 
-    I forked the prism-samplernn codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[12]</a></sup>.
+    I forked the original prism-samplernn<sup><a href="#ref">[2]</a></sup> codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[3]</a></sup>.
     <pre>
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
     </pre>
-    Without this parameter, the training would crash on my GPU (RTX 2070 SUPER) with a mysterious error message, "Fail to find the dnn implementation". It's an esoteric fix that one can find scattered across GitHub<sup><a href="#ref">[13]</a></sup>.
+    Without this parameter, the training would crash on my GPU (RTX 2070 SUPER) with a mysterious error message, "Fail to find the dnn implementation". It's an esoteric fix that one can find scattered across GitHub.
     <br>
     <br>
-    The Python setup is straightforward using conda<sup><a href="#ref">[14]</a></sup> and following the project's README.md:
+    The Python setup is straightforward using conda<sup><a href="#ref">[4]</a></sup> and following the project's README.md:
     <pre>
     $ conda create -n prism-samplernn python=3.8 anaconda
     $ conda activate prism-samplernn
@@ -71,7 +71,7 @@
     </audio>
 
     <h2>Experiment 0 lessons</h2>
-    I applied tweaks that Karl Hiner<sup><a href="#ref">[15]</a></sup> did in his experiments - for my next experiment, I would try some or all of the following:
+    I applied tweaks that Karl Hiner<sup><a href="#ref">[5]</a></sup> did in his experiments - for my next experiment, I would try some or all of the following:
     <ul>
 	    <li>Increase the number of RNN layers from 4 to 5 to try to create more cohesive music</li>
 	    <li>Use more training data than just one album</li>
@@ -308,22 +308,11 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
 
     <h1 id="ref">References</h2>
     <ol>
-      <li>mlacoustics (citations.bib)</li>
-      <li>wavenetpaper (citations.bib)</li>
-      <li>samplernnpaper (citations.bib)</li>
-      <li>magentaddsp (citations.bib)</li>
-      <li>dadabots (citations.bib)</li>
-      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
-      <li>prism (citations.bib)</li>
-      <li>prism-blog (citations.bib)</li>
-      <li>prism gh commits</li>
-      <li>my fork</li>
-      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
-      <li> conda </li>
-      <li> dadabots curation </li>
-      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
-      <li> chromaprint https://acoustid.org/chromaprint </li>
-      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+      <li><a href="https://www.rncm.ac.uk/research/research-centres-rncm/prism/prism-blog/a-short-history-of-neural-synthesis/">A Short History of Neural Synthesis - Royal Northern College of Music</a></li>
+      <li><a href="https://github.com/rncm-prism/prism-samplernn">rncm-prism/prism-samplernn - GitHub</a></li>
+      <li><a href="https://github.com/sevagh/prism-samplernn">rncm-prism/prism-samplernn - my fork on GitHub</a></li>
+      <li><a href="https://docs.conda.io/en/latest/">Conda - Conda Documentation</a></li>
+      <li><a href="https://karlhiner.com/music_generation/wavenet_and_samplernn/">Karl Hiner - Generating Music with WaveNet and SampleRNN</a></li>
     </ol>
   </body>
 </html>

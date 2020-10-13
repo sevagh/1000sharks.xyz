@@ -17,7 +17,7 @@
 
     <h2>Python minor code tweaks</h2>
 
-    I forked the dadabots_sampleRNN codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[12]</a></sup>.
+    I forked the dadabots_sampleRNN codebase<sup><a href="#ref">[1]</a></sup> to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[2]</a></sup>.
     <pre>
     diff --git a/models/two_tier/two_tier16k.py b/models/two_tier/two_tier16k.py
     index 5a579c8..9f9d53f 100644
@@ -55,7 +55,7 @@
     </pre>
     After several cycles of training, the program would crash with an index out of range error in the <code>samples</code> slicing code. After adding a <code>try/catch</code>, I noticed a second problem which is that the sample generation code (in between training steps) was using up all of my 32GB of RAM (not GPU vmem, but real system RAM). I ended up commenting out the <code>generate_and_save_samples</code> code. This means that while training, the model won't emit sample clips to allow one to listen to the quality of the training - but at least it prevented crashing.
     <h2>Python setup</h2>
-    The dadabots SampleRNN installation instructions<sup><a href="#ref">https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu</a></sup> are tailored to a Google Cloud Platform Ubuntu 16.04 setup with an NVIDIA V100 GPU. I adjusted the steps to work on my computer.
+    The dadabots SampleRNN installation instructions<sup><a href="#ref">[3]</a></sup> are tailored to a Google Cloud Platform Ubuntu 16.04 setup with an NVIDIA V100 GPU. I adjusted the steps to work on my computer.
     <br>
     <br>
     The full install steps for a functional dadabots SampleRNN (with notes) were as follows:
@@ -185,22 +185,9 @@
 
     <h1 id="ref">References</h2>
     <ol>
-      <li>mlacoustics (citations.bib)</li>
-      <li>wavenetpaper (citations.bib)</li>
-      <li>samplernnpaper (citations.bib)</li>
-      <li>magentaddsp (citations.bib)</li>
-      <li>dadabots (citations.bib)</li>
-      <li>new ref: machine learning reproducability crisis https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis</li>
-      <li>prism (citations.bib)</li>
-      <li>prism-blog (citations.bib)</li>
-      <li>prism gh commits</li>
-      <li>my fork</li>
-      <li>tf weird fix https://github.com/search?q=%22tf.config.experimental.set_memory_growth%28physical_devices%5B0%5D%2C+enable%3DTrue%29%22&type=issues</li>
-      <li> conda </li>
-      <li> dadabots curation </li>
-      <li> librosa trim https://librosa.org/doc/main/generated/librosa.effects.trim.html </li>
-      <li> chromaprint https://acoustid.org/chromaprint </li>
-      <li> https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207 </li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN">dadabots_samplRNN - GitHub</a></li>
+      <li><a href="https://github.com/sevagh/dadabots_sampleRNN">dadabots_samplRNN - my fork on GitHub</a></li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">dadabots SampleRNN installation instructions</a></li>
     </ol>
   </body>
 </html>
