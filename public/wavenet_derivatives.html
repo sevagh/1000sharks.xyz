@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./mumt618_report.html">MUMT 618 report</a>
+      <a href="./">1000sharks demo</a>
+    </div>
+
+    <h1>WaveNet derivatives</h1>
+    <h2>Tacotron 2</h2>
+    Tacotron 2<sup><a href="#ref">[1]</a></sup> is a neural network architecture for speech synthesis directly from text.
+    <br>
+    <br>
+    In the Text-To-Speech component of the model, there is a recurrent sequence-to-sequence feature prediction network that maps character embeddings to mel-scale spectrograms. In the vocoder component of the model, the resultant spectrograms are synthesized into time-domain waveforms using a WaveNet-based vocoder.
+    <br>
+    <br>
+    I chose this paper to describe because it combines the best of the spectral domain and neural audio synthesis in the waveform domain. It uses 50ms mel-spectrogram spectral features for representing structured features of speech (utterances, etc.) compactly, and uses WaveNet vocoders to synthesize the spectrograms to natural-sounding audio.
+    <h3>Advancements over Tacotron 1</h3>
+    The Tacotron 2 paper describes how Tacotron 1 vocoded magnitude spectrograms using the Griffin-Lim algorithm for phase estimation, followed by an inverse short-time Fourier transform:
+    <blockquote>
+    Griffin-Lim produces characteristic artifacts and lower audio quality than approaches like WaveNet.
+    </blockquote>
+    This is clear support for the idea that WaveNet is an advancement over the previous state of the art of spectral-based audio synthesis.
+    <br>
+    <br>
+    The Tacotron 2 block diagram shows the complexity of the model:
+    <br>
+    <img src="tacotron2.png" width=400px/>
+    <br>
+    <br>
+    However, most of the complexity is in the TTS part of the model, which convert text into a sequence of mel-spectrograms. We're only really interested in very broad details, and the last stage of the model, which is the WaveNet vocoder in the top right.
+    <h3>mel spectrograms</h3>
+    Tacotron 2 encodes character sequences into features, which can be decoded into spectrograms:
+    <blockquote>
+    mel spectrograms are computed through a short-time Fourier transform (STFT) using a 50 ms frame size, 12.5 ms frame hop, and a Hann window function. ... We transform the STFT magnitude to the mel scale using an 80 channel mel filterbank spanning 125 Hz to 7.6 kHz, followed by log dynamic range compression.
+    </blockquote>
+    The spectrograms are then used as conditioning inputs to a WaveNet which mostly resembles the vanilla WaveNet we already saw, with some modifications to the stacked layers of dilated convolutions.
+    <h3>Code</h3>
+    There is an implementation of Tacotron 2 published by NVIDIA<sup><a href="#ref">[2]</a></sup>, which uses their own WaveGlow<sup><a href="#ref">[3]</a></sup> (instead of WaveNet) as the vocoder. This indicates to me that the vocoder layer can be swapped out for any other waveform-generative model, e.g. SampleRNN, as long as its trained appropriately on mel spectrograms.
+    <h2>Jukebox</h2>
+    Jukebox<sup><a href="#ref">[4]</a></sup> solves a different problem of the waveform domain - that of the high dimensionality:
+    <blockquote>
+    The key bottleneck is that modeling the raw audio directly introduces extremely long-range dependencies, making it computationally challenging to learn the high-level semantics of music. A way to reduce the difficulty is to learn a lower-dimensional encoding of the audio with the goal of losing the less important information but retaining most of the musical information.
+    </blockquote>
+    At typical sampling rates (16kHz for speech, 44.1kHz for CD-quality music, 48Khz for digital music), there are thousands of samples needed to represent features (e.g. a word or note).
+    <blockquote>
+    We introduce Jukebox, a model that generates music with singing in the raw audio domain. We tackle the long context of raw audio using a multi-scale VQ-VAE to compress it to discrete codes, and modeling those using autoregressive Transformers.
+    </blockquote>
+    <h3>VQ-VAE</h3>
+    VQ-VAE<sup><a href="#ref">[5]</a></sup> stands for Vector Quantized Variational Autoencoder. It seems like VQ-VAEs are an improvement over standard VAEs, which are neural network-based encoding/decoding scheme. So in a sense, Jukebox is using "mini neural networks" to encode the raw waveform into a more compact representation, and <i>then</i> applying WaveNet on the VQ-VAEs, or compressed space<sup><a href="#ref">[6]</a></sup>:
+    <br>
+    <img src="vae.png" width=400px/>
+    <br>
+    <h3>Jukebox model</h3>
+    Jukebox applies the familiar WaveNet model except without respecting causality:
+    <blockquote>
+    we use residual networks consisting of WaveNet-style non-causal 1-D dilated convolutions, interleaved with downsampling and upsampling 1-D convolutions to match different hop lengths.
+    </blockquote>
+    Jukebox uses VQ-VAE WaveNets operating at 3 different tiers of temporal resolution:
+    <br>
+    <img src="jukebox.png" width=800px/>
+    <br>
+    This is very reminsicent of SampleRNN's 3 tiers of RNN operating at different temporal resolutions.
+    <h3>Reconstruction</h3>
+    Just like we saw the inverse spectral transform of Tacotron 1 suffering from low quality from the Griffin-Lim phase reconstruction phase, Jukebox suffers from its own reconstruction problems:
+    <blockquote>
+    When using only the sample-level reconstruction loss, the model learns to reconstruct low frequencies only. To capture mid-to-high frequencies, we add a spectral loss which ... encourages the model to match the spectral components without paying attention to phase which is more difficult to learn.
+    </blockquote>
+    <h2>WaveNetVA</h2>
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li><a href="https://arxiv.org/abs/1612.07837">Tacotron 2, a neural network architecture for speech synthesis directly from text- arXiv.org</a></li>
+      <li><a href="https://github.com/NVIDIA/tacotron2">NVIDIA/tacotron2 - GitHub</a></li>
+      <li><a href="https://github.com/NVIDIA/waveglow">NVIDIA/waveglow - GitHub</a></li>
+      <li><a href="https://arxiv.org/abs/2005.00341">Jukebox: A Generative Model for Music - arXiv.org</a></li>
+      <li><a href="https://arxiv.org/abs/1711.00937">Neural Discrete Representation Learning - arXiv.org</a></li>
+    </ol>
+  </body>
+</html>
