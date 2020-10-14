@@ -25,7 +25,7 @@
 \title{Neural audio synthesis}
 \subtitle{WaveNet, SampleRNN, and the waveform domain}
 \author{Sevag Hanssian}
-\institute{McGill University}
+\institute{MUMT 618, McGill University}
 \setbeamertemplate{navigation symbols}{}
 
 \begin{document}
@@ -368,12 +368,13 @@
 \end{frame}
 
 \begin{frame}
-	\frametitle{What's an RNN}
-	Recurrent neural networks:
+	\frametitle{SampleRNN network}
 	\begin{quote}
 		Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states.\footfullcite{rnn}
-	\end{quote}\\
-	So, it generates samples at a micro-temporal scale (like WaveNet) for realistic timbre/notes, and then the generated samples feed back into the network which has also learned macro-temporal patterns (e.g. how notes follow other notes), to generate audio which exhibits patterns at multiple temporal scales.\\
+	\end{quote}
+	\begin{figure}
+	\includegraphics[width=10.5cm]{./samplernn_rnn.png}
+	\end{figure}
 \end{frame}
 
 \note{
@@ -382,6 +383,8 @@
 			 Different scales of patterns -- that's music exactly
 		 \item
 			 The main insight behind SampleRNN is that audio in particular exhibits salient patterns at multiple timescales, and that these patterns and features are composed hierarchically. For example, timbre is shaped by patterns over very short timescales, while musical events and gestures like bowing or striking an instrument happen over longer timescales. Melodies are composed of a series of musical events, which are often grouped into compositional structures like bars or phrases, which are further grouped into sections and then full songs. (Karl Hiner)
+		 \item
+			 SampleRNN generates frames (features 16 samples apart) for macro-temporal patterns, which feed back into the network for generating individual samples at a micro-temporal scale (like WaveNet), to generate audio which exhibits patterns at multiple temporal scales
 	\end{itemize}
 }
 
@@ -523,7 +526,6 @@
 
 \begin{frame}
 \frametitle{Middle ground}
-% double column pros cons like thanos presentation with colors
 	\textbf{\textcolor{burgundy}{Traditional synthesis}}: structured building blocks based on frequency and/or symbolic representation. Fiddly parameters, imperfect recreations\\
 	\textbf{\textcolor{burgundy}{Fully neural audio synthesis}}: realistic timbre, dynamics, delays, ``human'' traits, create natural sounds. Unstructured black box\\
 	\textbf{\textcolor{ao(english)}{Differentiable DSP}}\footfullcite{ddsp1}, \footfullcite{ddsp2}
