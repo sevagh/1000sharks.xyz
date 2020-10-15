@@ -46,18 +46,18 @@
     <a href="https://arxiv.org/abs/1609.03499">WaveNet</a> in 2016 and <a href="https://arxiv.org/abs/1612.07837">SampleRNN</a> in 2017 are both neural network architecture for unconditional audio generation in the waveform domain. These differ from traditional audio synthesis techniques which use the spectral or symbolic domain(timbre 2018). By modelling the waveform directly, the phase is preserved implicitly, leading to high quality, realistic generated audio. The downsides are the black box/opaque models, and the unstructured, babbling outputs. These models are also computationally expensive, since waveforms require a lot of samples to represent recognizeable speech or music features.
     <br>
     <br>
-    Several interesting papers build on WaveNet. 3 that I will analyze as part of this project are:
+    Several interesting papers build on WaveNet. Two that I mentioned in the paper presentation and will analyze as part of this project are:
     <ul>
       <li><i>Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions</i> - <a href="https://arxiv.org/abs/1712.05884">Tacotron 2</a>, Google's next-gen Text-to-Speech model based on WaveNet in 2017</li>
-      <li><i>Real-Time Guitar Amplifier Emulation with Deep Learning</i> - <a href="https://www.mdpi.com/2076-3417/10/3/766/htm">WaveNetVA</a> (virtual-analog) model for effects modelling in 2019</li>
       <li><i>Jukebox: A Generative Model for Music</i> - <a href="https://arxiv.org/abs/2005.00341">Jukebox</a>, a coherent music + vocal generation model in 2020</li>
     </ul>
     Other derivative works (that may be interesting but I won't be talking about) are:
     <ul>
       <li><a href="https://www.researchgate.net/publication/329206913_TimbreTron_A_WaveNetCycleGANCQTAudio_Pipeline_for_Musical_Timbre_Transfer">TimbreTron: A WaveNet(CycleGAN(CQT(Audio))) Pipeline for Musical Timbre Transfer</a></li>
       <li><a href="https://arxiv.org/abs/1802.08435">WaveRNN</a>, Efficient Neural Audio Synthesis</li>
+      <li><i>Real-Time Guitar Amplifier Emulation with Deep Learning</i> - <a href="https://www.mdpi.com/2076-3417/10/3/766/htm">WaveNetVA</a> (virtual-analog) model for effects modelling in 2019</li>
     </ul>
-    It'll be useful to dig a little deeper under the surface of both WaveNet and SampleRNN to gain an intuition of how they work. I'll also do a brief overview of 3 derivative works - WaveNetVA, Tacotron 2, and Jukebox.
+    It'll be useful to dig a little deeper under the surface of both WaveNet and SampleRNN to gain an intuition of how they work, and to also look at Tacotron 2 and Jukebox to see how they build on WaveNet.
 
     <h2>Deeper dives</h2>
     Despite the "black box" nature of WaveNet and SampleRNN, we can do a below-the-surface examination of the models (including training and generation steps) to get a better sense of:
@@ -69,7 +69,7 @@
     </ol>
     <a href="/wavenet_overview.html"><h3>WaveNet overview</h3></a>
     <a href="/samplernn_overview.html"><h3>SampleRNN overview</h3></a>
-    <a href="/wavenet_derivatives.html"><h3>WaveNet derivatives - WaveNetVA, Tacotron 2, Jukebox</h3></a>
+    <a href="/wavenet_derivatives.html"><h3>WaveNet derivatives - Tacotron 2 and Jukebox</h3></a>
 
     <h1>Experiments</h1>
     A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[5]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.

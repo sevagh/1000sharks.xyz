@@ -112,6 +112,13 @@ We use a Softmax because we found that better results were obtained by discretiz
     <br>
     <br>
     The summary of the first tier is that it establishes the lowest level of sample-to-sample relations in the input waveforms, just like the first 1D convolution of WaveNet.
+    <br>
+    <br>
+    Support for MLP as first layer:
+    <blockquote>
+    As in the conventional 2D CNNs, the input layer is a passive layer that receives the raw 1D signal and the output layer is a MLP layer with the number of neurons equal to the number of classes
+    </blockquote>
+    We can see this is exactly the case - this convention carried over from conventional 2D CNN models, since the SampleMLP has the same number of outputs as the quantization channels (256). (SOURCE: https://arxiv.org/pdf/1905.03554.pdf)
     <h4>GRU and LSTM - different types of RNN</h4>
     The SampleRNN authors used different choices (GRU and LSTM) of memory cell in the RNN, and concluded that the GRU performed best. Let's take a detour into this excellent overview paper on the use of GRU vs. LSTM gates in RNNs<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
     <br>

@@ -1,0 +1,23 @@
+conda activate stylegan2
+python train.py --data_dir=/home/sevagh/repos/prism-samplernn/experiment-1-data/periphery-chunks/
+git status
+git checkout -- .
+python train.py --data_dir=/home/sevagh/repos/prism-samplernn/experiment-1-data/periphery-chunks/
+pip list | grep librosa
+pip install librosa==0.6.0
+python train.py --data_dir=/home/sevagh/repos/prism-samplernn/experiment-1-data/periphery-chunks/
+pip install numba
+pip install numba==0.48
+pip erase llvmlite
+pip install llvmlite --ignore installed
+pip install llvmlite --ignore-installed
+pip install numba==0.48
+python train.py --data_dir=/home/sevagh/repos/prism-samplernn/experiment-1-data/periphery-chunks/
+export TF_FORCE_GPU_ALLOW_GROWTH="true"
+python train.py --data_dir=/home/sevagh/repos/prism-samplernn/experiment-1-data/periphery-chunks/
+ls
+python generate.py --wav_out_path=periphery_generated.wav --samples 16000 logdir/train/2020-10-13T10-53-58/model.ckpt-99999
+ls
+mpv periphery_generated.wav
+python generate.py --wav_out_path=periphery_generated.wav --samples 160000 logdir/train/2020-10-13T10-53-58/model.ckpt-99999
+mpv periphery_generated.wav

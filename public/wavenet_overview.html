@@ -33,8 +33,111 @@ the conditional probability distribution is modelled by a stack of convolutional
     <br>
     <br>
     The implementation of WaveNet I will be dissecting for the rest of this page is <a href="https://github.com/ibab/tensorflow-wavenet">tensorflow-wavenet</a>.
+    <h3>Intuition behind convolutional neural networks</h3>
+    A convolutional neural network creates broad "feature maps" from the raw input, reducing the dimensionality of the problem. This is useful in data that exhibits patterns, and the dominant paradigm in images and computer vision.
+    <blockquote>
+    Convolution is a good way to identify patterns in data that is directly tied to space or time. Adjacent pixels in an image are adjacent for a reason. In the physical world, they collect light from neighboring locations. Time series data has a similar structure. Neighboring data points were produced close together in time and are much more likely to be related then points far apart. This inherent structure is what convolution exploits. It finds local patterns that reoccur in the data.<sup><a href="#ref">https://e2eml.school/convolution_one_d.html</a></sup>
+    </blockquote>
+    This paper<sup><a href="#ref">HOW  DO  DEEP  CONVOLUTIONAL  NEURAL  NETWORKSLEARN  FROM RAW  AUDIO WAVEFORMS?</a></sup> attempts to understand how image CNN intuitions also apply to audio waveforms. They say that there is a lack of understanding of how deep CNNs actually learn from an audio waveform, and that current waveform models have been adapted from the image domain (where CNNs are demonstrably effective<sup><a href="#ref">zeiler and fergus 2014</a></sup>).
+    <br>
+    <br>
+    This is possibly supported in the case of WaveNet, which is built on PixelCNN, an image/computer vision model. In the author's criticism of the use of CNNs for audio, they say that:
+    <blockquote>
+    in computer vision, the first layer of CNNs usually extracts low-level features such as edges, while the following layers of CNNs usually capture high-level features such as shapes. However, there are no corresponding concepts of "edges" and "shapes" for audio waveforms. Therefore,  it remains unknown what actual features CNNs learn from waveforms.
+    </blockquote>
+    WaveNet states that they use CNNs to model audio which contains patterns at multiple temporal resolutions, and yet the authors here claim that low-level features and high-level features (edges and shapes) in images have no equivalent in audio.
+    <br>
+    <br>
+    The critics conclude that:
+    <blockquote>
+    From a scientific standpoint, using deep CNNs as a black box for audio and speech processing is deeply unsatisfactory.  Without a clear understanding of how and why CNNs can learn from raw audio waveforms, the development of better models, i.e., the design of the network architecture and the determination of hyper-parameters, is reduced to trial-and-error. In fact, the network architecture and hyper-parameter settings of existing approaches are similar to those of computer vision models.
+    </blockquote>
+    As a counterpoint, this paper discusses the success of 1D Convolutional neural networks for 1D signals (not necessarily audio waveforms): https://arxiv.org/pdf/1905.03554.pdf, but without any simple intuition visual/graphic aids.
+    <h4>Image CNN intuitions</h4>
+    Let's look at an animation of how an image convolution extracts features<sup><a href="#ref">https://developers.google.com/machine-learning/practica/image-classification/convolutional-neural-networks</a></sup>:
+    <br>
+    <img src="wavenet_convolution_overview.gif" width="600px"/>
+    <br>
+    Here's a visualization of successive convolution layers applied to a cat picture<sup><a href="#ref">https://towardsdatascience.com/applied-deep-learning-part-4-convolutional-neural-networks-584bc134c1e2</a></sup>:
+    <br>
+    <img src="wavenet_convolution_image.png" width="800px"/>
+    The image of the cat gets more "abstract" as the convolutions get deeper, as broader and higher level features are extracted. This fits into a larger, typical architecture of an image CNN model<sup><a href="#ref">same google one</a></sup>:
+    <br>
+    <img src="wavenet_cnn_architecture.svg" width="800px"/>
+    <br>
+    <br>
+    According to the intuition of WaveNet (and SampleRNN), there should be a music analog to this multi-level feature extraction.
+    <h4>Audio waveform convolutions and feature maps</h4>
+    The above visualizations have their equivalent in some papers on 1D convolutions on audio waveforms<sup><a href="#ref">https://www.researchgate.net/publication/308831941_Very_Deep_Convolutional_Neural_Networks_for_Raw_Waveforms</a></sup>, <sup><a href="#ref">https://www.groundai.com/project/end-to-end-environmental-sound-classification-using-a-1d-convolutional-neural-network/1</a></sup>:
+    <br>
+    <img src="wavenet_1dconv_architecture.png" width="500px"/>
+    <br>
+    <img src="wavenet_1dconv_architecture2.png" width="800px"/>
+    In this paper<sup><a href="#ref">https://arxiv.org/pdf/1712.00866.pdf</a></sup>, a spectral visualization of the audio waveform after applying simple 1x2,3 1D convolution filters (WaveNet uses 1x2) in a simplified model called SampleCNN shows a similar "broad feature extraction" as the cat picture above:
+    <br>
+    <img src="wavenet_1dconv_features.png" width="800px"/>
+    <br>
+    <br>
+    It looks like we can develop the intuition that the equivalent of extracting broad "edges and shapes" from the image domain, in audio waveforms, is more easily seen in the spectrogram, even though the 1D convolution is applied to the waveform. The authors conclude:
+    <blockquote>
+    We presented the two sample-level CNN models that directly take raw waveforms as input and havefilters with small granularity. As future work, we will investigate more filter visualization techniques to have better understanding of the models.
+    </blockquote>
+    I think there's enough shown above to accept the premise that 2D CNNs on images and 1D CNNs on audio are useful for the same underlying reason, that they both represent real world sequential waveforms, where the individual pixels/samples in close near each other are related either spatially or temporally.
+
+    <h3>Receptive field and dilated convolutions</h3>
+    This WaveNet analysis<sup><a href="#ref">https://github.com/AhmadMoussa/A-guide-to-Wavenet</a></sup> has good descriptions and visual aids of the use of dilated convolutions. In a convolutional neural network, the receptive field can be seen as the region of interest on the input that are considered by the convolutional filter for the outputs.
+    <blockquote>
+    What are dilated convolutions? A dilated convolution refers to a convolution with a filter that is dilated, where dilated means that the filter is enlarged by spacing out the weight values and padding them with zeroes in between. What is really happening, is that we are expanding the receptive field and increasing our coverage, we are looking at the relationship between neighbours that are a little bit more distant from each other. This is useful if some important features of our data are only definable in regions larger than what our receptive field covers.
+    </blockquote>
+    Animation of dilated convolution filter:
+    <br>
+    <img src="wavenet_dilation_1.gif" width="350px"/>
+    <img src="wavenet_dilation_12.gif" width="350px"/>
+    <br>
+    Flat 2D visualization of dilated convolution filters:
+    <br>
+    <img src="wavenet_dilation_2.png" width="800px"/>
+    <br>
+    This ties directly into the WaveNet paper's<sup><a href="#ref">wavenet paper</a></sup> rationale for selecting dilated convolutions:
+    <blockquote>
+    In order to deal with long-range temporal dependencies needed for raw audio generation,we  develop  new  architectures  based  on  dilated  causal  convolutions,  which  exhibit  very large receptive fields.
+    </blockquote>
+    The use of a stack of dilated convolutions lets them exponentially increase the receptive field while keeping computational cost low:
+    <br>
+    <img src="wavenet_stacked_dilated.png" width="750px"/>
+    Finally, a diagram from the paper shows WaveNet's stack of dilated convolutions and how the dilations represent longer temporal relations, i.e. a bigger receptive field into the past samples:
+    <br>
+    <img src="7_wavenet_annot.png" width=500px/>
+    <h4>Calculating the receptive field</h4>
+    The WaveNet paper describes receptive fields in values of ms or s. Referring to their text-to-speech experiments:
+    <blockquote>
+    The receptive field size of the WaveNets was 240 milliseconds. 
+    </blockquote>
+    Referring to their music experiments:
+    <blockquote>
+    We found that enlarging the receptive field was crucial to obtain samples that sounded musical. Even with a <b>receptive field of several seconds</b>, the models did not enforce long-range consistency which resulted in second-to-second variations in genre, instrumentation, volume and sound quality. 
+    </blockquote>
+    The ibab/tensorflow-wavenet implementation includes the following code for receptive field calculation:
+    <pre>
+    @staticmethod
+    def calculate_receptive_field(filter_width, dilations)
+        receptive_field = (filter_width - 1) * sum(dilations) + 1
+        receptive_field += filter_width - 1
+        return receptive_field
+    </pre>
+    When run against the default wavenet params, this gives a value of 5117:
+    <pre>
+    "filter_width": 2,
+    "dilations": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+    </pre>
+    The default WaveNet settings in this implementation, therefore, produce a receptive field of 320ms (at a 16 kHz sample rate).
+
     <h3>Preprocessing</h3>
-    In WaveNet, the waveform amplitudes (a 1D array of floats, in their raw form) are mu-law encoded, and then one-hot encoded<sup><a href="#ref">[2]</a></sup>.
+    In WaveNet, the waveform amplitudes (a 1D array of floats, in their raw form) are mu-law encoded, and then one-hot encoded<sup><a href="#ref">[2]</a></sup>. The default value for mu-law quantization channels is 256. This is for computational efficiency - WaveNet only has to reason about 256 possible output values.
     <br>
     <br>
     I extracted out the preprocessing/encoding steps into a script to run them isolated from the larger network:
@@ -119,11 +222,27 @@ the conditional probability distribution is modelled by a stack of convolutional
     <br>
     <img src="wavenet_conv_layers.png" width=650px/>
     <br>
-    Another diagram from the paper shows WaveNet's dilated convolutions to represent longer temporal relations:
+    <h4>Stack of dilated convolutions - details</h4>
+    The term "stack of dilated convolutions" is a very high-level description of WaveNet which ignores some implementation details. This article<sup><a href="ref">https://medium.com/@kion.kim/wavenet-a-network-good-to-know-7caaae735435</sup></a> does a good job in describing the details of the stack, including describing the residual blocks and skip connections. 
     <br>
-    <img src="7_wavenet_annot.png" width=500px/>
     <br>
-    Let's dissect it piece by piece.
+    <blockquote>
+    Residual block can be thought of as a building block for WaveNet . There are as many blocks as the number of dilation layers. For each residual block, the output of the previous block will be fed into the next one. By doing this, local features in low dilation layers are accumulated sequentially to capture dependency between the data points at distance. Let take a look at the inside block.
+    </blockquote>
+    To copy from that article directly, a residual block produces two outputs:
+    <ol>
+      <li>Feature map from the previous residual block, which will be used as an input for the next one</li>
+      <li>Skip connection, which will be used to calculate loss function for the batch after the aggregation</li>
+    </ol>
+    <br>
+    <img src="wavenet_residual_block.png" width=500px/>
+    <br>
+    Finally, the residual blocks are summed together in the total model:
+    <br>
+    <img src="wavenet_residual_block2.png" width=650px/>
+    <br>
+    The final matrix of parameters from the hidden layers considers all of these dilated temporal convolutional layers summed together, so that the output waveform respects a learned distribution that considers all of the sequential coarser-time features.
+
     <h4>The first causal convolution</h4>
     In the code (taken from wavenet/model.py):
     <pre>
@@ -182,7 +301,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     <br>
     <img src="wavenet_conv_layers2.png", width=600px/>
 
-    <h4>Stack of dilated convolution layers</h4>
+    <h4>Stack of dilated convolution layers - code</h4>
     Afterwards, as in the diagram, there's an iterative layer of dilated convolutions that feed into each other:
     <pre>
     # Add all defined dilation layers.
@@ -483,6 +602,40 @@ measures the probability error in discrete classification tasks in which the cla
             return tf.reshape(last, [-1])
     </pre>
     This ties back to the softmax distribution we discussed earlier - the internal state of the neural network weights and parameters are cast into a set of "yes/no?" decisions for emitting different sample values (in the range of 256-bit integers that are chosen in the mu-law quantization scheme).
+    <h3>Conditioning WaveNet</h3>
+    All of the above is an analysis of unconditioned WaveNet. However, WaveNet can be conditioned (i.e. influenced externally) in several ways as described in the paper.
+    <br>
+    <br>
+    <img src="wavenet_condition_1.png" width=750px/>
+    <br>
+    Note the difference from the original unconditional probability:
+    <br>
+    <br>
+    <img src="wavenet_probability.png" width=750px/>
+    <br>
+    <br>
+    They make the following case for the use of conditioning:
+    <blockquote>
+    By conditioning the model on other input variables, we can guide WaveNet's generation to produce audio with the required characteristics. For example, in a multi-speaker setting we can choose the speaker by feeding the speaker identity to the model as an extra input. Similarly, for TTS we need to feed information about the text as an extra input.
+    </blockquote>
+    This solves the "babbling output" problem (which as we can see, isn't a problem, but an architecture choice). There are two choices: global and local conditioning.
+    <blockquote>
+    Global conditioning is characterised by a single latent representation <b>h</b> that influences the output distribution across all timesteps, e.g. a speaker embedding in a TTS model. For local conditioning we have a second timeseries ht, possibly with a lower sampling frequency than the audio signal, e.g. linguistic features in a TTS model. We first transform this time series using a transposed convolutional network (learned upsampling) that maps it to a new time series y=f(h) with the same resolution as the audio signal, which is then used in the activation unit.
+    </blockquote>
+    The 3 cases of activation function (unconditioned, global conditioning, local conditioning) are as follows:
+    <br>
+    <img src="wavenet_activation1.png" width=350px/>
+    <br>
+    <img src="wavenet_activation2.png" width=520px/>
+    <br>
+    <img src="wavenet_activation3.png" width=570px/>
+    <h3>Parallelism</h3>
+    WaveNet's training can be parallelized. However, generation is sequential necessarily:
+    <blockquote>
+    At training time, the conditional predictions for all timesteps can be made in parallel because all timesteps of ground truth x are known.  When generating with the model, the predictions are sequential: after each sample is predicted, it is fed back into the network to predict the next sample
+    </blockquote>
+    There is a <sup><a href="#ref">https://arxiv.org/pdf/1611.09482.pdf</a></sup> fast WaveNet model for speeding up generation by caching intermediate computations.
+
     <h1 id="ref">References</h2>
     <ol>
       <li><a href="https://arxiv.org/abs/1609.03499">WaveNet: A Generative Model for Raw Audio - arXiv.org</a></li>
