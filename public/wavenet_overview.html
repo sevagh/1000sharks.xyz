@@ -310,12 +310,16 @@ the conditional probability distribution is modelled by a stack of convolutional
             with tf.name_scope('layer{}'.format(layer_index)):
                 output, current_layer = self._create_dilation_layer(
                     current_layer, layer_index, dilation,
-                    global_condition_batch, output_width)
+                    output_width)
                 outputs.append(output)
     </pre>
     The <code>self.dilations</code> variable is loaded from wavenet_params.json:
     <pre>
-    "dilations": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    "dilations": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+                  1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
     </pre>
     These represent those "wider timescale of learning" - 1 sample apart, 2, 4, etc. for coarser and higher-level patterns in the audio. We saw code earlier for the creation of dilated convolutions. In the WaveNet implementation studied, they don't use the <code>dilations</code> parameter of the conv1d function, but instead use their own pre- and post- dilation steps:
     <pre>
@@ -438,8 +442,7 @@ But training deep networks can be difficult because of the vanishing gradients p
                 push_ops.append(push)
 
                 output, current_layer = self._generator_dilation_layer(
-                    current_layer, current_state, layer_index, dilation,
-                    global_condition_batch)
+                    current_layer, current_state, layer_index, dilation)
                 outputs.append(output)
     </pre>
     The dilated stack weights have been stored in the model with the name <code>layer$i</code>, and now they're loaded into the generator object. This is then post-processed to create a waveform:
@@ -581,7 +584,7 @@ measures the probability error in discrete classification tasks in which the cla
     </pre>
     As described, WaveNet is an autoregressive model, i.e. one that uses probabilities to predict the next likely sample. This can be seen clearly in the code above. The function <code>predict_proba</code> is defined in <code>wavenet/model.py</code>:
     <pre>
-    def predict_proba(self, waveform, global_condition=None, name='wavenet'):
+    def predict_proba(self, waveform, name='wavenet'):
         '''Computes the probability distribution of the next sample based on
         all samples in the input waveform.
         If you want to generate audio by feeding the output of the network back

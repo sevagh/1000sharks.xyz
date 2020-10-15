@@ -134,6 +134,19 @@
     datasets/music/skeletal-domain/parts/p1016.flac
     datasets/music/skeletal-domain/parts/p1017.flac
     </pre>
+    Example of 2 overlapping chunks:
+    <br>
+    <audio controls>
+	    <source src="cannibal_corpse_chunk1.flac" type="audio/flac"</source>
+    </audio>
+    <br>
+    <br>
+    <audio controls>
+	    <source src="cannibal_corpse_chunk2.flac" type="audio/flac"</source>
+    </audio>
+    <br>
+    <br>
+    The chunks emitted are as many overlapping 8-second clips as it takes to create 6400 total files.
 
     <h2>Training command</h2>
     The dadabots training command they recommend with the best hyperparameters for producing music is:
@@ -149,7 +162,7 @@
     I had to modify their batch size from 128 (which would crash on GPU vmem OOM) to 32 to fit on the 8GB of GPU memory on my video card.
     <br>
     <br>
-    This ran for 10 epochs, or 41 hours of training (220,000 total iterations) when I decided to stop and verify the outputs. The saved model on-disk looks like this:
+    This ran for 10 epochs, or <b>90 hours</b> of training (220,000 total iterations) when I decided to stop and verify the outputs. The saved model on-disk, 23GB in size, looks like this:
     <pre>
     $ tree results_2t/models-two_tier-two_tier16k.py-expskeletal-domain_experiment-n_frames64-frame_size16-emb_size256-skip_connT-dim1024-n_rnn5-rnn_typeLSTM-q_levels256-q_typemu-law-batch_size32-weight_normT-learn_h0F-which_setskeletal-domain-lr0.001/ -L 1
     results_2t/models-two_tier-two_tier16k.py-expskeletal-domain_experiment-n_frames64-frame_size16-emb_size256-skip_connT-dim1024-n_rnn5-rnn_typeLSTM-q_levels256-q_typemu-law-batch_size32-weight_normT-learn_h0F-which_setskeletal-domain-lr0.001/
@@ -182,6 +195,15 @@
     <audio controls>
 	    <source src="skeletal_domain_2.wav" type="audio/wav"</source>
     </audio>
+    <br>
+    <br>
+    In their raw form, the 200 disjoint 20-second output clips have varying musical content and need to be curated. This is a personal choice - the dadabots discuss the role of curation after generating 10 hours of music with their model<sup><a href="#ref">dadabots paper</a></sup>, and I wanted to work on a curation script. I chose to work with 200x 20s wav files as my curation base.
+
+    <h1>Mini-conclusion</h1>
+    This sounds great and is the best performing music model, as promised by the dadabots in their paper<sup><a href="#ref">dadabots paper</a></sup>. Their paper describes the modifications and hyperparameters they made to SampleRNN, but in summary:
+    <blockquote>
+    We use a 2-tier SampleRNN with 256 embedding size, 1024 dimensions, 5 layers, LSTM, 256 linear quantization levels, 16kHz or 32kHz sample rate, skip connections, and a 128 batch size, using weight normalization. The initial state h0 is randomized to generate more variety
+    </blockquote>
 
     <h1 id="ref">References</h2>
     <ol>

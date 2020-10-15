@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./mumt618_report.html">MUMT 618 report</a>
+      <a href="./">1000sharks demo</a>
+    </div>
+
+    <h1>WaveNet experiments</h1>
+    Let's run some experiments with the same WaveNet implementation that I dissected in the overview. I didn't need to make any tweaks or modifications: I was able to use the same conda environment I used for StyleGAN2 in the <a href="./album_art.html">album art generation</a> page, since both models depend on Tensorflow 1.
+    <br>
+    <br>
+    I also had to export the same environment variable to support my RTX 2070 Super, <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code>.
+
+    <h2>Training data preparation</h2>
+
+    This is a simple implementation of WaveNet that doesn't suggest any training data techniques. However, supplying entire songs or albums as inputs is unfeasible - since the in-memory state of the neural network uses a lot of space to represent a single sample, input does have to be chunked.
+    <br>
+    <br>
+    As such, I used the same data directories as I generated for the <a href="./samplernn_3tier_experiments.html">3-tier SampleRNN experiments</a>, by splitting 6 Periphery albums into 8-second chunks of audio with 1-second overlap (using the <code>chunk_audio.py</code> script):
+    <pre>
+    #!/usr/bin/env bash
+    
+    echo "Fetching training data - youtube-dl wav files for Periphery albums"
+
+    # youtube playlists for instrumental Periphery albums - Periphery III, I, II, IV, Omega, Juggernaut
+    periphery_album_1="PLSTnbYVfZR03JGmoJri6Sgvl4f0VAi9st"
+    periphery_album_2="PL7DVODcLLjFplM5Rw-bNUyrwAECIPRK26"
+    periphery_album_3="PLuEYu7jyZXdde7ePWV1RUvrpDKB8Gr6ex"
+    periphery_album_45="PLEFyfJZV-vtKeBedXTv82yxS7gRZkzfWr"
+    periphery_album_6="PL6FJ2Ri6gSpOWcbdq--P5J0IRcgH-4RVm"
+    
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_1}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_2}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_3}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_45}
+    youtube-dl -ci -f "bestaudio" -x --audio-format wav -i ${periphery_album_6}
+    
+    mkdir -p periphery-raw
+    
+    find . -maxdepth 1 -mindepth 1 -type f -iname '*PERIPHERY*.wav' -exec mv {} periphery-raw/ \;
+    find . -maxdepth 1 -mindepth 1 -type f -name '*.wav' -exec rm {} \;
+    
+    mkdir -p periphery-processed
+    
+    echo "Processing each wav file to 16kHz mono"
+
+    for f in periphery-raw/*.wav; do
+            ffmpeg -i "${f}" -ac 1 -ar 16000 "periphery-processed/$(basename "$f")";
+    done
+    
+    mkdir -p periphery-chunks
+
+    for f in periphery-processed/*.wav; do
+            python ../chunk_audio.py --input_file "${f}" --output_dir periphery-chunks --chunk_length 8000 --overlap 1000
+    done
+    </pre>
+    What the script does is:
+    <ul>
+	    <li>Fetch files for every instrumental Periphery song (from YouTube playlists + youtube-dl)</li>
+	    <li>Pre-process them into 16kHz mono with ffmpeg (for optimal training)</li>
+	    <li>Apply the chunk_audio.py script to split into non-silent 8-second chunks with 1 second overlap</li>
+	    <li>Create 1 set of training data - periphery-chunks</li>
+    </ul>
+    The chopped up chunk files look and sound like this. On-disk:
+    <pre>
+    $ ls ~/repos/prism-samplernn/experiment-1-data/periphery-chunks/Jetpacks\ Was\ Yes\!\ \[Instrumental\]\ Periphery-RrhJdumeI6U_chunk_*
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_10.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_11.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_12.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_13.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_14.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_15.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_16.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_17.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_18.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_19.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_1.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_20.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_21.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_22.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_23.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_24.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_25.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_26.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_27.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_28.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_29.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_2.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_30.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_31.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_32.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_33.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_3.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_4.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_5.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_6.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_7.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_8.wav
+    Jetpacks Was Yes! [Instrumental] Periphery-RrhJdumeI6U_chunk_9.wav
+    </pre>
+    Example of 2 overlapping chunks:
+    <br>
+    <audio controls>
+	    <source src="periphery_input_chunk_1.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    <audio controls>
+	    <source src="periphery_input_chunk_2.wav" type="audio/wav"</source>
+    </audio>
+
+    <h2>Training command</h2>
+    I obeyed the README directly:
+    <pre>
+    $ python train.py --data_dir=/home/sevagh/repos/prism-samplernn/experiment-1-data/periphery-chunks/
+    </pre>
+    I didn't have to modify any parameters or fix any bugs to prevent crashing.
+    <br>
+    <br>
+    This ran for <b>40 hours</b> of training (99,999 total iterations) to completion, on a rather small dataset (0.5GB of Periphery chunks). The saved trained model on-disk, 77M in size, looks like this:
+    <pre>
+    $ tree logdir/train/2020-10-13T10-53-58/
+    logdir/train/2020-10-13T10-53-58/
+    ├── checkpoint
+    ├── events.out.tfevents.1602600848.localhost.localdomain
+    ├── model.ckpt-99800.data-00000-of-00001
+    ├── model.ckpt-99800.index
+    ├── model.ckpt-99800.meta
+    ├── model.ckpt-99850.data-00000-of-00001
+    ├── model.ckpt-99850.index
+    ├── model.ckpt-99850.meta
+    ├── model.ckpt-99900.data-00000-of-00001
+    ├── model.ckpt-99900.index
+    ├── model.ckpt-99900.meta
+    ├── model.ckpt-99950.data-00000-of-00001
+    ├── model.ckpt-99950.index
+    ├── model.ckpt-99950.meta
+    ├── model.ckpt-99999.data-00000-of-00001
+    ├── model.ckpt-99999.index
+    └── model.ckpt-99999.meta
+    </pre>
+
+    <h2>Generation command and results</h2>
+    To generate music from the saved model, we run the following command:
+    <pre>
+    python generate.py --wav_out_path=periphery_generated.wav --samples 160000 logdir/train/2020-10-13T10-53-58/model.ckpt-99999
+    </pre>
+    This creates a 10 second clip of Periphery, which doesn't sound too bad. Recall that the default parameters produce a receptive field length of 320ms, and WaveNet mentioned needing a receptive field of "seconds" (unspecified) for good music:
+    <br>
+    <br>
+    Checkpoint/training iteration 99,999:
+    <br>
+    <audio controls>
+	    <source src="wavenet_periphery.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    This is not the best, but not bad. Definitely better than 3-tier SampleRNN - the music sounds like Periphery, but with pretty bad timing - the note onsets seem mashed together and don't flow. This could be a result of the too-small receptive field<sup><a href="#ref">wavenet paper</a></sup>:
+    <blockquote>
+    Although it is difficult to quantitatively evaluate these models, a subjective evaluation is possible by listening to the samples they produce. We found that enlarging the receptive field was crucial to obtain samples that sounded musical. Even with a receptive field of several seconds, the models did not enforce long-range consistency which resulted in second-to-second variations in genre, instrumentation, volume and sound quality. Nevertheless, the samples were often harmonic and aesthetically pleasing, even when produced by unconditional models.
+    </blockquote>
+    <h3>Receptive field - increase or decrease?</h3>
+    Considering the default receptive field is 320ms, perhaps this could be made larger. However, the receptive field can be grown by both adding more stacks of the same dilation, or increasing the maximum dilation, e.g.
+    <pre>
+    {
+          "filter_width": 2,
+	       "sample_rate": 16000,
+	       "dilations": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, ------> increase this way
+	                     1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+	                     1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+	                     1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+	                     1, 2, 4, 8, 16, 32, 64, 128, 256, 512,
+			     
+			     |
+			     |
+			     |
+			     |
+			     v
+
+			     increase this way
+    </pre>
+    Here<sup><a href="#ref">https://github.com/ibab/tensorflow-wavenet/issues/265</a></sup> we see a GitHub user discussing their plans to increase the receptive field and run more experiments:
+    <blockquote>
+    I was training on 2 files, each about a half hour long. Sample rate was set to 44.1k and the receptive field was about a second - 40100 samples or so - so [1,...4096,1,...4096,1,...4096,1,...4096,1,...4096].
+
+    I'm about to start a test with more like 50 files ~ 10hrs of music, and going to see if I can get the receptive field to be closer to 3 seconds.
+    </blockquote>
+    However, here's a counterpoint from the dadabots<sup><a href="https://github.com/ibab/tensorflow-wavenet/issues/192#issuecomment-354496940"></a></sup>who make the case (sensible, to me) that the receptive field in WaveNet should be <i>smaller</i> rather than bigger:
+    <blockquote>
+    I could be wrong, but IMO I think decreasing the wavenet receptive field is the answer to more musical output.
+    
+    The ablation studies in the Tacotron 2 paper showed us 10.5ms - 21ms is a good receptive field size if the wavenet conditions on a high-level representation.
+    
+    Wavenet is great at the low level. It makes audio sound natural and its MOS scores are almost realistic. Keep it there at the 20ms level. Condition it. Dedicate high-level structure to MIDI nets, symbolic music nets, or intermediate representations. Or go top-down with progressively-upsampled mel spectrograms. Do both bottom-up and top-down.
+    
+    Because these unconditioned predict-the-next-sample models only learn bottom-up as they train. First noise, then texture, then individual hits and notes, then phrases and riffs, then rhythm if you're lucky. The last thing they would learn is song composition or music theory. Struggles to see the forest for the trees.
+    </blockquote>
+    In short, the WaveNet paper stating that "a larger receptive field should be better for higher level musical structure" could be analogous to the SampleRNN paper stating that "3 tiers should be better for higher level musical structure than 2" - in practise, not as good.
+
+    <h1>Mini-conclusion</h1>
+    Ultimately due to the computation cost of re-running training (and not quite knowing which parameter to tweak or why), I settled for just the above - showing that with modern hardware (and a powerful GPU), 40 hours of time, and by following the README, you can generate some form of learned music with WaveNet.
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN">dadabots_samplRNN - GitHub</a></li>
+      <li><a href="https://github.com/sevagh/dadabots_sampleRNN">dadabots_samplRNN - my fork on GitHub</a></li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">dadabots SampleRNN installation instructions</a></li>
+    </ol>
+  </body>
+</html>
+

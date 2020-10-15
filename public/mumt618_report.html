@@ -16,7 +16,10 @@
     <h3>An AI music experience, prepared by Sevag for MUMT 618, Fall 2020</h3>
 
     <p>
-    Machine learning and deep learning techniques in recent years have an increasing presence in the field of musical acoustics<sup><a href="#ref">[1]</a></sup>. As a preliminary introduction to generating music using neural networks, you can view my <a href="paper_presentation_final.pdf" type="application/pdf" title="Neural audio synthesis">paper presentation</a> introducing WaveNet<sup><a href="#ref">[2]</a></sup>, SampleRNN<sup><a href="#ref">[3]</a></sup>, and other novel approaches to neural audio.
+    Machine learning and deep learning techniques in recent years have an increasing presence in the field of musical acoustics<sup><a href="#ref">[1]</a></sup>. As a preliminary introduction to generating music using neural networks, you can view my <a href="paper_presentation_final.pdf" type="application/pdf" title="Neural audio synthesis">paper presentation</a> introducing WaveNet<sup><a href="#ref">[2]</a></sup>, SampleRNN<sup><a href="#ref">[3]</a></sup>, and other novel approaches to neural audio:
+    <object data="paper_presentation_final.pdf" title="Neural audio synthesis" width="800px" height="512px">
+        <a href="YourFile.pdf">shree</a> 
+    </object>
     <br>
     <br>
     In the presentation, I outlined that there exist both unconstrained, unstructured models for generating audio in the waveform domain (resulting in babbling or confusing outputs), and structured physical computational models that have been used in traditional audio synthesis (that don't sound very natural).
@@ -46,10 +49,11 @@
     <a href="https://arxiv.org/abs/1609.03499">WaveNet</a> in 2016 and <a href="https://arxiv.org/abs/1612.07837">SampleRNN</a> in 2017 are both neural network architecture for unconditional audio generation in the waveform domain. These differ from traditional audio synthesis techniques which use the spectral or symbolic domain(timbre 2018). By modelling the waveform directly, the phase is preserved implicitly, leading to high quality, realistic generated audio. The downsides are the black box/opaque models, and the unstructured, babbling outputs. These models are also computationally expensive, since waveforms require a lot of samples to represent recognizeable speech or music features.
     <br>
     <br>
-    Several interesting papers build on WaveNet. Two that I mentioned in the paper presentation and will analyze as part of this project are:
+    Several interesting papers build on WaveNet. I will analyze a few as part of this project, for illuminating some important aspects or modifications about WaveNet and SampleRNN:
     <ul>
-      <li><i>Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions</i> - <a href="https://arxiv.org/abs/1712.05884">Tacotron 2</a>, Google's next-gen Text-to-Speech model based on WaveNet in 2017</li>
+      <li><i>Natural TTS Synthesis by Conditioning WaveNet on Mel Spectrogram Predictions</i> - <a href="https://arxiv.org/abs/1712.05884">Tacotron 2</a>, Google's new (2017) Text-to-Speech model with a WaveNet vocoder</li>
       <li><i>Jukebox: A Generative Model for Music</i> - <a href="https://arxiv.org/abs/2005.00341">Jukebox</a>, a coherent music + vocal generation model in 2020</li>
+      <li><i>Char2Wav: End-to-End Speech Synthesis</i> - <a href="http://josesotelo.com/speechsynthesis/">Char2Wav</a>, a 2017 speech synthesizer with a SampleRNN vocoder</li>
     </ul>
     Other derivative works (that may be interesting but I won't be talking about) are:
     <ul>
@@ -69,7 +73,7 @@
     </ol>
     <a href="/wavenet_overview.html"><h3>WaveNet overview</h3></a>
     <a href="/samplernn_overview.html"><h3>SampleRNN overview</h3></a>
-    <a href="/wavenet_derivatives.html"><h3>WaveNet derivatives - Tacotron 2 and Jukebox</h3></a>
+    <a href="/wavenet_derivatives.html"><h3>WaveNet and SampleRNN derivatives - Tacotron 2, Jukebox, Char2Wav</h3></a>
 
     <h1>Experiments</h1>
     A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[5]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.
@@ -84,14 +88,31 @@
       <li>NVIDIA RTX 2070 SUPER GPU</li>
       <li>Fedora 32 OS</li>
     </ul>
+    The most important component by far in GPU-based deep learning is the GPU. For comparison<sup><a href="https://oddity.ai/blog/best-bang-for-buck-gpu/">this source</a></sup>:
+    <ul>
+	    <li>The dadabots used a Tesla V100<sup><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">this ref</a></sup>, which is 2x better than my RTX 2070 SUPER</li>
+	    <li>The authors of SampleRNN used a K80<sup><a href="https://github.com/soroushmehr/sampleRNN_ICLR2017/issues/7">this</a></sup>, which 2 K40s on one die - this one is actually worse than my RTX 2070 SUPER, but there are 2 of them</li>
+    </ul>
 
-    <a href="./samplernn_3tier_experiments.html"><h2>3-tier SampleRNN experiments</h2></a>
+    <h2>Experimental procedure</h2>
 
-    <a href="./samplernn_2tier_experiments.html"><h2>2-tier SampleRNN experiments</h2></a>
+    Seeing as I only ran experiments on my personal computer, training takes a long time (and prevents me from using my computer). In particular, I didn't foresee succeeding in the standard machine learning experimental workflow of:
+    <ol>
+	    <li>Pick some input data and parameters based on a hunch, hypothesis, or some knowledge you have about the nature of the model and the input data</li>
+	    <li>Train and generate</li>
+	    <li>Tweak the input data or parameters</li>
+	    <li>Repeat</li>
+    </ol>
+    The experimental procedure I settled for was just following the default parameters and instructions for the 3 variants - WaveNet, 3-tier SampleRNN, 2-tier SampleRNN.
+    <br>
+    <br>
+    The goal is to just gain a minimum amount of experience in the real world usage of the models after doing a theoretical description/overview earlier.
+    <br>
+    <a href="./samplernn_3tier_experiments.html"><h3>3-tier SampleRNN experiments</h3></a>
 
-    <h2>(tentative) WaveNet experiments</h2></a>
+    <a href="./samplernn_2tier_experiments.html"><h3>2-tier SampleRNN experiments</h3></a>
 
-    This is an optional part of the project, since SampleRNN is considered better at generating music. It may still be instructive to get an idea of how to train WaveNet and to verify some results.
+    <a href="./wavenet_experiments.html"><h3>WaveNet experiments</h3></a>
     
     <a href="./curation.html"><h1>Curating neural generated results</h1></a>
 
@@ -125,9 +146,10 @@
     <h2>Future work</h2>
     Future work can include:
     <ul>
+      <li>Follow a cleaner experimentation process, i.e. strictly recording training/generation time and testing various hypotheses - e.g. increasing or decreasing the receptive field of WaveNet and verifying the results. More easily done on a GPU cluster, not a personal computer.</li>
       <li>Modify the PRiSM SampleRNN code, which is modern and clean, to add the 2-tier implementation - benefit from the new codebase and the better model for music</li>
       <li>Using more advanced models to create more structured outputs - the current state of the art seems to be Jukebox<sup><a href="#ref">[9]</a></sup></li>
-      <li>Build a derivative of WaveNet or SampleRNN for a more specific task (e.g. the amp modeling shown above), to demonstrate the extensibility of sample-based/waveform domain machine learning models</sup></li>
+      <li>Build a derivative of WaveNet or SampleRNN for a more specific task (e.g. amp modeling), to demonstrate the extensibility of sample-based/waveform domain machine learning models</sup></li>
     </ul>
 
     <h1 id="ref">References</h2>
