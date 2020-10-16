@@ -80,7 +80,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     <br>
     It looks like we can develop the intuition that the equivalent of extracting broad "edges and shapes" from the image domain, in audio waveforms, is more easily seen in the spectrogram, even though the 1D convolution is applied to the waveform. The authors conclude:
     <blockquote>
-    We presented the two sample-level CNN models that directly take raw waveforms as input and havefilters with small granularity. As future work, we will investigate more filter visualization techniques to have better understanding of the models.
+    We presented the two sample-level CNN models that directly take raw waveforms as input and have filters with small granularity. As future work, we will investigate more filter visualization techniques to have better understanding of the models.
     </blockquote>
     I think there's enough shown above to accept the premise that 2D CNNs on images and 1D CNNs on audio are useful for the same underlying reason, that they both represent real world sequential waveforms, where the individual pixels/samples in close near each other are related either spatially or temporally.
 
@@ -224,10 +224,8 @@ the conditional probability distribution is modelled by a stack of convolutional
     <br>
     <h4>Stack of dilated convolutions - details</h4>
     The term "stack of dilated convolutions" is a very high-level description of WaveNet which ignores some implementation details. This article<sup><a href="ref">https://medium.com/@kion.kim/wavenet-a-network-good-to-know-7caaae735435</sup></a> does a good job in describing the details of the stack, including describing the residual blocks and skip connections. 
-    <br>
-    <br>
     <blockquote>
-    Residual block can be thought of as a building block for WaveNet . There are as many blocks as the number of dilation layers. For each residual block, the output of the previous block will be fed into the next one. By doing this, local features in low dilation layers are accumulated sequentially to capture dependency between the data points at distance. Let take a look at the inside block.
+    Residual block can be thought of as a building block for WaveNet . There are as many blocks as the number of dilation layers. For each residual block, the output of the previous block will be fed into the next one. By doing this, local features in low dilation layers are accumulated sequentially to capture dependency between the data points at distance.
     </blockquote>
     To copy from that article directly, a residual block produces two outputs:
     <ol>

@@ -12,7 +12,7 @@
       <a href="./">1000sharks demo</a>
     </div>
 
-    <h1>WaveNet derivatives</h1>
+    <h1>WaveNet and SampleRNN derivatives</h1>
     <h2>Tacotron 2</h2>
     Tacotron 2<sup><a href="#ref">[1]</a></sup> is a neural network architecture for speech synthesis directly from text.
     <br>
@@ -43,6 +43,209 @@
     The spectrograms are then used as conditioning inputs to a WaveNet which mostly resembles the vanilla WaveNet we already saw, with some modifications to the stacked layers of dilated convolutions.
     <h3>Code</h3>
     There is an implementation of Tacotron 2 published by NVIDIA<sup><a href="#ref">[2]</a></sup>, which uses their own WaveGlow<sup><a href="#ref">[3]</a></sup> (instead of WaveNet) as the vocoder. This indicates to me that the vocoder layer can be swapped out for any other waveform-generative model, e.g. SampleRNN, as long as its trained appropriately on mel spectrograms.
+    <br>
+    <br>
+    If we follow the link to NVIDIA's website announcing WaveGlow<sup><a href="#ref">https://nv-adlr.github.io/WaveGlow</a></sup>, we can find the <a href="https://github.com/r9y9/wavenet_vocoder">wavenet_vocoder</a> project, which is WaveNet conditioned on mel spectrograms, i.e. the vocoder part of Tacotron 2.
+    <h3>How does the WaveNet Vocoder work</h3>
+    The code<sup><a href="#ref">wavenet vocoder</a></sup> advertises a "focus on local and global conditioning of WaveNet, which is essential for vocoder." This follows from the last part of the WaveNet overview where I showed the theoretical implementation of global and local conditioning from the WaveNet paper. There are examples of both global conditioning (i.e. speaker id) and local conditioning (mel spectrogram, i.e. utterances) in <a href="https://r9y9.github.io/wavenet_vocoder/">their demo website</a>.
+    <br>
+    <br>
+    In practise, what does it look like to condition WaveNet with mel spectrograms? In the model code, the local conditioning is set using <code>cin_channels</code>. In <code>train.py</code>, setting <code>cin_channels > 0 (default: 80)</code> (80 = typical number of frequency channels in the mel scale) enables local conditioning, and changes how training data is loaded:
+    <pre>
+    def get_data_loaders(dump_root, speaker_id, test_shuffle=True):
+        data_loaders = {}
+        local_conditioning = hparams.cin_channels > 0
+       
+        X = FileSourceDataset(
+            RawAudioDataSource(join(dump_root, phase), speaker_id=speaker_id,
+                               max_steps=max_steps, cin_pad=hparams.cin_pad,
+                               hop_size=audio.get_hop_size()))
+        if local_conditioning:
+            Mel = FileSourceDataset(
+                MelSpecDataSource(join(dump_root, phase), speaker_id=speaker_id,
+                                  max_steps=max_steps, cin_pad=hparams.cin_pad,
+                                  hop_size=audio.get_hop_size()))
+            assert len(X) == len(Mel)
+            print("Local conditioning enabled. Shape of a sample: {}.".format(
+                Mel[0].shape))
+
+
+        dataset = PyTorchDataset(X, Mel)
+
+        data_loader = data_utils.DataLoader(
+            dataset, batch_size=hparams.batch_size, drop_last=True,
+            num_workers=hparams.num_workers, sampler=sampler, shuffle=shuffle,
+            collate_fn=collate_fn, pin_memory=hparams.pin_memory)
+    </pre>
+    Dataset are prepared from <code>datasets/wavallin.py</code>, which contains the code for loading a wav file and its associated mel spectrogram for WaveNet conditioning:
+    <pre>
+    def _process_utterance(out_dir, index, wav_path, text):
+        # Load the audio to a numpy array:
+        wav = audio.load_wav(wav_path)
+       
+        # trim silence, preprocess, etc.
+	# omitted
+
+        # Compute a mel-scale spectrogram from the trimmed wav:
+        # (N, D)
+        mel_spectrogram = audio.logmelspectrogram(wav).astype(np.float32).T
+ 
+        # Set waveform target (out)
+        if is_mulaw_quantize(hparams.input_type):
+            out = P.mulaw_quantize(wav, hparams.quantize_channels - 1)
+        elif is_mulaw(hparams.input_type):
+            out = P.mulaw(wav, hparams.quantize_channels - 1)
+        else:
+            out = wav
+       
+        # Write the spectrograms to disk:
+        name = splitext(basename(wav_path))[0]
+        audio_filename = '%s-wave.npy' % (name)
+        mel_filename = '%s-feats.npy' % (name)
+        np.save(os.path.join(out_dir, audio_filename),
+                out.astype(out_dtype), allow_pickle=False)
+        np.save(os.path.join(out_dir, mel_filename),
+                mel_spectrogram.astype(np.float32), allow_pickle=False)
+    
+        # Return a tuple describing this training example:
+        return (audio_filename, mel_filename, N, text)
+    </pre>
+    Finally, we saw in the WaveNet paper that the global and local conditioning are implicated in the activation function inside the neural network:
+    <br>
+    <br>
+    Global:
+    <br>
+    <img src="./wavenet_activation2.png" width="500px">
+    <br>
+    Local:
+    <br>
+    <img src="./wavenet_activation3.png" width="500px">
+    <br>
+    <br>
+    In the code, we can see this in <code>wavenet_vocoder/modules.py</code>:
+    <pre>
+    def _forward(self, x, c, g):
+        """Forward
+
+        Args:
+            x (Tensor): B x C x T
+            c (Tensor): B x C x T, Local conditioning features
+            g (Tensor): B x C x T, Expanded global conditioning features
+
+        Returns:
+            Tensor: output
+        """
+        residual = x
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+        a, b = x.split(x.size(splitdim) // 2, dim=splitdim)
+
+        # local conditioning
+        if c is not None:
+            assert self.conv1x1c is not None
+            c = _conv1x1_forward(self.conv1x1c, c)
+            ca, cb = c.split(c.size(splitdim) // 2, dim=splitdim)
+            a, b = a + ca, b + cb
+
+        # global conditioning
+        if g is not None:
+            assert self.conv1x1g is not None
+            g = _conv1x1_forward(self.conv1x1g, g)
+            ga, gb = g.split(g.size(splitdim) // 2, dim=splitdim)
+            a, b = a + ga, b + gb
+
+        x = torch.tanh(a) * torch.sigmoid(b)
+
+        # For skip connection
+        s = _conv1x1_forward(self.conv1x1_skip, x)
+
+        # For residual connection
+        x = _conv1x1_forward(self.conv1x1_out, x)
+
+        x = (x + residual) * math.sqrt(0.5)
+        return x, s
+    </pre>
+    Notice that different convolutions are applied for local and global - <code>self.conv1x1c</code> and <code>self.conv1x1g</code>. Let's look at the difference:
+    <pre>
+    self.conv1x1c = Conv1d1x1(cin_channels, gate_channels, bias=False)
+    self.conv1x1g = Conv1d1x1(gin_channels, gate_channels, bias=False)
+    </pre>
+    A last thing to check is how to create an utterance based on an input of mel spectrograms? As per the author, <code>synthesis.py</code> is not working, but the usage should resemble:
+    <pre>
+    $ python synthesis.py ${checkpoint_path} ${output_dir} --preset=<json> --hparams="parameters you want to override"
+    </pre>
+    <blockquote>
+    Important options:
+    
+        --conditional=<path>: (Required for conditional WaveNet) Path of local conditional features (.npy).
+    </blockquote>
+    This way, once we have a collection of mel spectrograms (output by the first half of Tacotron 2, for example), we would then use the synthesis.py script/code to create a wav file containing the utterance associated with that mel spectrogram.
+
+    <h3>How does Tacotron 2 use the WaveNet vocoder</h3>
+    The above inspected the standalone wavenet_vocoder project, but how does it look embedded inside the larger Tacotron 2 project?
+    <br>
+    <br>
+    We can find the reference to the WaveGlow vocoder (similar enough to WaveNet for our purposes) in the NVIDIA tacotron2 codebase<sup<a href="#ref">nv tacotron2</a></sup>, in the file <code>inference.ipynb</code>. Since it's a Jupyter notebook, there's a visual ui in GitHub<sup><a href="#ref">https://github.com/NVIDIA/tacotron2/blob/master/inference.ipynb</a></sup>:
+    <br>
+    <img src="tacotron2_waveglow.png" width="800px"/>
+    <br>
+    <br>
+    Once the mel spectrogram is obtained from the Tacotron 2 model, they're passed to the WaveGlow "infer" function. We can find this in the WaveGlow<sup><a href="#ref">waveglow</a></sup> source code, in the file <code>glow.py</code>:
+    <pre>
+    def infer(self, spect, sigma=1.0):
+        spect = self.upsample(spect)
+
+        audio = torch.autograd.Variable(sigma*audio)
+
+        for k in reversed(range(self.n_flows)):
+            n_half = int(audio.size(1)/2)
+            audio_0 = audio[:,:n_half,:]
+            audio_1 = audio[:,n_half:,:]
+
+            output = self.WN[k]((audio_0, spect))
+    </pre>
+    The call <code>self.WN[k]((audio_0, spect))</code> is invoking the <code>self.forward</code> method of a WN object (a WaveNet-like layer, as described in the code) higher up in the same file. Here we see the familiar insertion of the spectrogram conditioning inside the activation unit:
+    <pre>
+    def forward(self, forward_input):
+        audio, spect = forward_input
+        audio = self.start(audio)
+        output = torch.zeros_like(audio)
+        n_channels_tensor = torch.IntTensor([self.n_channels])
+    
+        spect = self.cond_layer(spect)
+    
+        for i in range(self.n_layers):
+            spect_offset = i*2*self.n_channels
+            acts = fused_add_tanh_sigmoid_multiply(
+                self.in_layers[i](audio),
+                spect[:,spect_offset:spect_offset+2*self.n_channels,:],
+                n_channels_tensor)
+    
+            res_skip_acts = self.res_skip_layers[i](acts)
+            if i < self.n_layers - 1:
+                audio = audio + res_skip_acts[:,:self.n_channels,:]
+                output = output + res_skip_acts[:,self.n_channels:,:]
+            else:
+                output = output + res_skip_acts
+    
+        return self.end(output)
+    </pre>
+   
+    <h2>Char2Wav</h2>
+    Char2Wav<sup><a href="#ref">char2wav paper</a></sup> is included, for the purposes of this report, to show that SampleRNN can also be conditioned like WaveNet. The Char2Wav block diagram is as follows:
+    <br>
+    <img src="./char2wav_diagram.png" width="350px"/>
+    <br>
+    We see again that SampleRNN, just like WaveNet in Tacotron 2, is the last vocoder stage of this TTS system:
+    <blockquote>
+    We use a conditional version of the same model (SampleRNN) to learn the mapping from a sequence of vocoder features to corresponding audio samples.  Each vocoder feature frame is added as an extra bias to the corresponding state in the top tier. This allows the module to use the past audio samples and vocoder feature frames to generate the current audio samples.
+    </blockquote>
+    Let's look at the code to find out how SampleRNN is conditioned.
+    <h3>Code</h3>
+    There is a reference<sup><a href="#ref">char2wav code https://github.com/sotelo/parrot</a></sup> codebase released, named "parrot". Parrot contains a custom version of conditioned SampleRNN in the path <code>sampleRNN/models/conditional/three_tier.py</code>.
+    <br>
+    <br>
+
     <h2>Jukebox</h2>
     Jukebox<sup><a href="#ref">[4]</a></sup> solves a different problem of the waveform domain - that of the high dimensionality:
     <blockquote>
@@ -72,7 +275,8 @@
     <blockquote>
     When using only the sample-level reconstruction loss, the model learns to reconstruct low frequencies only. To capture mid-to-high frequencies, we add a spectral loss which ... encourages the model to match the spectral components without paying attention to phase which is more difficult to learn.
     </blockquote>
-    <h2>WaveNetVA</h2>
+    <h3>Code</h3>
+    The reference code is <a href="reference jukebox">here</a> but the dadabots have began <a href="dadabots fork">experimenting with it</a> in their own fork - they probably have some interesting new ideas in the pipeline.
 
     <h1 id="ref">References</h2>
     <ol>
