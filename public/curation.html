@@ -14,7 +14,10 @@
 
     <h1>Curating neural generated results</h1>
 
-    An important thing to note is that the Dadabots focus heavily on curating<sup><a href="#ref">[1]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music:
+    An important thing to note is that the Dadabots focus heavily on curating<sup><a href="#ref">[1]</a></sup> the resultant audio clips. From a blackbox neural network that produces any kind of audio, from silence, to a cacophony of sounds, and everything in between, one needs to curate the results to combine them into a cohesive piece of music.
+    <br>
+    <br>
+    The dadabots published a paper and tool<sup><a href="#ref">[2],[3]</a></sup> for curation:
     <blockquote>
     With the creation of neural synthesis systems which output raw audio, it has become possible to generate dozens of hours of music. While not a perfect imitation of the original training data, the quality of neural synthesis can provide an artist with many variations of musical ideas. However, it is tedious for an artist to explore the full musical range and select interesting material when searching through the output.
     </blockquote>
@@ -25,15 +28,11 @@
 	    <li>Potentially apply some MIR techniques* to group similar clips together, to create the sense of a "cohesive" musical piece</li>
     </ul>
     *Ideally, we would use popular MIR Python libraries (librosa, madmom, Essentia) to assist us in the curation step, e.g. by grouping similar clips by their musical content. However, as this is more in the domain of MUMT 621 (music information retrieval), and not an easy task, I won't spend too much time on it.
-    <br>
-    <br>
-    I want to minimize the amount of visual/manual audio curation that I do, and rely only on the simple curation listed above.
-        
     <h2>Chromaprint-based curation script</h2>
-    The first tool I use in the curation script is librosa's trim silence<sup><a href="#ref">[2]</a></sup> to remove leading and trailing silence from the generated clips. This helps as the majority of clips have some musical content but lots of silence in between.
+    The first tool I use in the curation script is librosa's trim silence<sup><a href="#ref">[4]</a></sup> to remove leading and trailing silence from the generated clips. This helps as the majority of clips have some musical content but lots of silence in between.
     <br>
     <br>
-    The next thing I need is to be able to compare the pieces of musical content/non-silence with each other, to concatenate clips by similarity. This should have the effect of creating a maximally cohesive piece of music. I settled for the chromaprint<sup><a href="#ref">[3]</a></sup>. Using chromaprints, we can get an array of 32-bit integers representing the "acoustic fingerprint" of a waveform.
+    The next thing I need is to be able to compare the pieces of musical content/non-silence with each other, to concatenate clips by similarity. This should have the effect of creating a maximally cohesive piece of music. I settled for the chromaprint<sup><a href="#ref">[5]</a></sup>. Using chromaprints, we can get an array of 32-bit integers representing the "acoustic fingerprint" of a waveform.
     <br>
     <br>
     Combining these two elements is the first job of the curation script:
@@ -55,7 +54,7 @@
                 'chromaprint': int_fingerprint,
         }
     </pre>
-    This code extracts sequences of non-silent music from the generated clips, and stores their chromaprints. We also need a way to compare the arrays of 32-bit integer chromaprints, to be able to rank the generated music clips by their similarity with other clips. For this I borrowed some code that computes a correlation between lists of integer chromaprints<sup><a href="#ref">[4]</a></sup>. I rank clips by maximum correlation in their chromaprints:
+    This code extracts sequences of non-silent music from the generated clips, and stores their chromaprints. We also need a way to compare the arrays of 32-bit integer chromaprints, to be able to rank the generated music clips by their similarity with other clips. For this I borrowed some code that computes a correlation between lists of integer chromaprints<sup><a href="#ref">[6]</a></sup>. I rank clips by maximum correlation in their chromaprints:
     <pre>
     # naive O(n^2) comparison
     for filename1, data1 in all_audio.items():
@@ -140,7 +139,7 @@
     <br>
     According to the dadabots' README<sup><a href="#ref">[1]</a></sup>, they don't necessarily accept that the latest training epoch is the best one. That's why I picked a variety of epochs:
     <blockquote>
-      However, we found the latest checkpoint does not always create the best music. Instead we listen to the test audio generated at each checkpoint, choose our favorite checkpoint, and delete the newer checkpoints, before generating a huge batch with this script.
+    However, we found the latest checkpoint does not always create the best music. Instead we listen to the test audio generated at each checkpoint, choose our favorite checkpoint, and delete the newer checkpoints, before generating a huge batch with this script.
     </blockquote>
     I generated sequences of different durations. The generate commands are as follows:
     <pre>
@@ -192,9 +191,11 @@
     <audio controls>
       <source src="coral_reefer.wav" type="audio/wav"</source>
     </audio>
-    <h1 id="ref">References</h2>
+    <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN#creative-workflow">dadabots_sampleRNN - Creative workflow</a></li>
+      <li><a href="http://ceur-ws.org/Vol-2327/IUI19WS-MILC-3.pdf">Curating Generative Raw Audio Music with D.O.M.E. - CJ Carr, Zack Zukowski (dadabots)  - PDF paper</a></li>
+      <li><a href="https://github.com/Cortexelus/dome">dome,  Dadabots' very own web app for curating 10+ hours of generated audio. - GitHub source code</a></li>
       <li><a href="https://librosa.org/doc/main/generated/librosa.effects.trim.html">librosa.effects.trim - librosa 0.8.0 documentation</a></li>
       <li><a href="https://acoustid.org/chromaprint">Chromaprint | AcoustID</a></li>
       <li><a href="https://medium.com/@shivama205/audio-signals-comparison-23e431ed2207">Audio signals: Comparison</a></li>

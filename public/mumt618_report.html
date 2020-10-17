@@ -25,9 +25,9 @@
     In the presentation, I outlined that there exist both unconstrained, unstructured models for generating audio in the waveform domain (resulting in babbling or confusing outputs), and structured physical computational models that have been used in traditional audio synthesis (that don't sound very natural).
     <br>
     <br>
-    In this project, I'll use SampleRNN for unstructured neural audio synthesis. From this diagram, I'll be targeting the top left image:
+    In this project, I'll analyze WaveNet, SampleRNN (which is a homegrown Montreal project!), Jukebox for pure machine learning/neural audio synthesis approaches, and Magenta DDSP (a collection of differentiable DSP building blocks e.g. sinusoidal oscillators, FIR filters) as a hybrid machine learning/physical modelling approach:
     <figure>
-    <img src="6_5_ml_acoustics.jpg" width=400px/>
+    <img src="6_5_ml_acoustics.png" width=500px/>
     <figcaption>By augmenting ML methods (top left) with physical models (bottom right) to obtain hybrid models (upper right), a synergy of the strengths of physical intuition and data-driven insights can be obtained <sup><a href="#ref">[1]</a></sup></figcaption>
     </figure>
     </p>
@@ -75,6 +75,12 @@
     <a href="/samplernn_overview.html"><h3>SampleRNN overview</h3></a>
     <a href="/wavenet_derivatives.html"><h3>WaveNet and SampleRNN derivatives - Tacotron 2, Jukebox, Char2Wav</h3></a>
 
+    <h2>Differentiable DSP</h2>
+
+    intro blurb here
+
+    <h3>(TODO) Magenta DDSP overview</h3>
+
     <h1>Experiments</h1>
     A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[5]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.
 
@@ -88,10 +94,10 @@
       <li>NVIDIA RTX 2070 SUPER GPU</li>
       <li>Fedora 32 OS</li>
     </ul>
-    The most important component by far in GPU-based deep learning is the GPU. For comparison<sup><a href="https://oddity.ai/blog/best-bang-for-buck-gpu/">this source</a></sup>:
+    The most important component by far in GPU-based deep learning is the GPU. For comparison<sup><a href="#ref">[6]</a></sup>:
     <ul>
-	    <li>The dadabots used a Tesla V100<sup><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">this ref</a></sup>, which is 2x better than my RTX 2070 SUPER</li>
-	    <li>The authors of SampleRNN used a K80<sup><a href="https://github.com/soroushmehr/sampleRNN_ICLR2017/issues/7">this</a></sup>, which 2 K40s on one die - this one is actually worse than my RTX 2070 SUPER, but there are 2 of them</li>
+	    <li>The dadabots used a Tesla V100<sup><a href="#ref">[7]</a></sup>, which is 2x better than my RTX 2070 SUPER</li>
+	    <li>The authors of SampleRNN used a K80<sup><a href="#ref">[8]</a></sup>, which 2 K40s on one die - this one is actually worse than my RTX 2070 SUPER, but there are 2 of them</li>
     </ul>
 
     <h2>Experimental procedure</h2>
@@ -103,16 +109,16 @@
 	    <li>Tweak the input data or parameters</li>
 	    <li>Repeat</li>
     </ol>
-    The experimental procedure I settled for was just following the default parameters and instructions for the 3 variants - WaveNet, 3-tier SampleRNN, 2-tier SampleRNN.
-    <br>
-    <br>
-    The goal is to just gain a minimum amount of experience in the real world usage of the models after doing a theoretical description/overview earlier.
-    <br>
+    The experimental procedure I settled for was just following the default parameters and instructions for the 3 variants - WaveNet, 3-tier SampleRNN, 2-tier SampleRNN. The goal is to just gain a minimum amount of experience in the real world usage of the models after doing a theoretical description/overview earlier.
     <a href="./samplernn_3tier_experiments.html"><h3>3-tier SampleRNN experiments</h3></a>
 
     <a href="./samplernn_2tier_experiments.html"><h3>2-tier SampleRNN experiments</h3></a>
 
     <a href="./wavenet_experiments.html"><h3>WaveNet experiments</h3></a>
+
+    <h3>(TODO) Magenta DDSP case study: Chowning clarinet model</h3>
+
+    Magenta DDSP is more amenable to exploration from a beginner - using DSP building blocks, I can recreate a traditional synthesis block diagram and attempt to set up a machine learning model to "learn" optimal parameters. Moreover, recall that instead of days and weeks of training, the violin synthesis example in the DDSP paper claimed to be trainable in 13 minutes, a big advantage.
     
     <a href="./curation.html"><h1>Curating neural generated results</h1></a>
 
@@ -120,7 +126,7 @@
 
     <h1>Results & conclusion</h1>
 
-    Machine learning and modern AI has problems with unexplained results, incomplete models and unreproducable results<sup><a href="#ref">[6]</a></sup>. Some excerpts from the reviewers of that paper<sup><a href="#ref">[7]</a></sup>:
+    Machine learning and modern AI has problems with unexplained results, incomplete models and unreproducable results<sup><a href="#ref">[9]</a></sup>. Some excerpts from the reviewers of that paper<sup><a href="#ref">[10]</a></sup>:
     <blockquote>
     High reproducibility might be difficult with some of the resource-intensive empirical papers within corporate labs where huge clusters and massive GPUs are used to run experiments. Running the code on smaller-scale data would not be reproducible because some of the algorithmic improvements show up only at scale.
     </blockquote>
@@ -128,7 +134,7 @@
     <blockquote>
     issue can come up with any scientific reporting if researchers try many different combinations and "clean up" the writing to report only the experimental configuration that worked. This can include subtle code parameters and specific datasets that support improvements in a paper. Even high reproducibility does not prevent researchers from leading the research reproducer through only those experimental steps that support the claims made in the research.
     </blockquote>
-    Throughout the course of this project, I didn't encounter the first problem (lack of computing resources), although this is especially relevant today with problems of "AI democratization"<sup><a href="#ref">[8]</a></sup>. For the most part, I was able to train the models on my personal computer and get results within several days of training. It was definitely a frustrating development process (compared to the immediate feedback loop of writing regular code).
+    Throughout the course of this project, I didn't encounter the first problem (lack of computing resources), although this is especially relevant today with problems of "AI democratization"<sup><a href="#ref">[11]</a></sup>. For the most part, I was able to train the models on my personal computer and get results within several days of training. It was definitely a frustrating development process (compared to the immediate feedback loop of writing regular code).
     <br>
     <br>
     I believe I encountered more of the second issue. WaveNet and SampleRNN are presented as if they're obvious, but as a beginner to machine learning, I didn't find the choices obvious at all. For example, where did Wavenet get its default value for dilations? How did SampleRNN end up with its default number of layers per RNN? The academic papers in both cases are concise but are seemingly intended for machine learning practitioners.
@@ -148,17 +154,20 @@
     <ul>
       <li>Follow a cleaner experimentation process, i.e. strictly recording training/generation time and testing various hypotheses - e.g. increasing or decreasing the receptive field of WaveNet and verifying the results. More easily done on a GPU cluster, not a personal computer.</li>
       <li>Modify the PRiSM SampleRNN code, which is modern and clean, to add the 2-tier implementation - benefit from the new codebase and the better model for music</li>
-      <li>Using more advanced models to create more structured outputs - the current state of the art seems to be Jukebox<sup><a href="#ref">[9]</a></sup></li>
+      <li>Using more advanced models to create more structured outputs - the current state of the art seems to be Jukebox<sup><a href="#ref">[12]</a></sup></li>
       <li>Build a derivative of WaveNet or SampleRNN for a more specific task (e.g. amp modeling), to demonstrate the extensibility of sample-based/waveform domain machine learning models</sup></li>
     </ul>
 
-    <h1 id="ref">References</h2>
+    <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://asa.scitation.org/doi/10.1121/1.5133944">Machine learning in acoustics: Theory and applications: The Journal of the Acoustical Society of America: Vol 146, No 5</a></li>
       <li><a href="https://arxiv.org/abs/1609.03499">WaveNet: A Generative Model for Raw Audio - arXiv.org</a></li>
       <li><a href="https://arxiv.org/abs/1612.07837">SampleRNN: An Unconditional End-to-End Neural Audio Generation Model - arXiv.org</a></li>
       <li><a href="https://arxiv.org/abs/1811.06633">Generating Albums with SampleRNN to Imitate Metal, Rock, and Punk Bands - arXiv.org</a></li>
       <li><a href="https://petewarden.com/2018/03/19/the-machine-learning-reproducibility-crisis/">The Machine Learning Reproducability Crisis</a></sup>
+      <li><a href="https://oddity.ai/blog/best-bang-for-buck-gpu/">The Best Bang for Your Buck Hardware for Deep Learning</a></li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">Installing Dadabots SampleRNN on Ubuntu</a></li> 
+      <li><a href="https://github.com/soroushmehr/sampleRNN_ICLR2017/issues/7">SampleRNN performance - Issue #7 - GitHub issues</a></li>
       <li><a href="https://openreview.net/pdf/590d904c6dbdcad65fbc7f422b839c4822c07f60.pdf">A Practical Taxonomy of Reproducibility for Machine Learning Research - paper</a></sup>
       <li><a href="https://openreview.net/forum?id=B1eYYK5QgX">A Practical Taxonomy of Reproducibility for Machine Learning Research - OpenReview.org review comments</a></sup>
       <li><a href="https://thegradient.pub/ai-democratization-in-the-era-of-gpt-3/">AI Democratization in Era of GPT-3</a></sup>

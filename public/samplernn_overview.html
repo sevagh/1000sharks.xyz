@@ -38,15 +38,15 @@
     <blockquote>
 We use a Softmax because we found that better results were obtained by discretizing the audio signals (also see van den Oord et al. (2016)) and outputting a Multinoulli distribution rather than using a Gaussian or Gaussian mixture to represent the conditional density of the original real-valued signal.
     </blockquote>
-    The reference implementation by the original authors of the paper, <a href="https://github.com/ibab/tensorflow-wavene://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017</a>, is less readable (to me) than the <a href="https://github.com/rncm-prism/prism-samplernn">PRiSM-SampleRNN</a> implementation, so I'll use the second for the code dissection.
+    The reference implementation by the original authors of the paper, <a href="https://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017</a>, is less readable (to me) than the <a href="https://github.com/rncm-prism/prism-samplernn">PRiSM-SampleRNN</a> implementation, so I'll use the second for the code dissection.
 
     <h2>2-tier vs. 3-tier SampleRNN</h2>
     Something to note is that various sources mention that 2-tier SampleRNN creates better music than 3-tier SampleRNN:
     <ul>
-	    <li> Dadabots<sup><a href="#ref">https://github.com/Cortexelus/dadabots_sampleRNN#training-samplernn-3-tier</a></sup>:
+	    <li> Dadabots<sup><a href="#ref">[2]</a></sup>:
 		    <blockquote>There's also a 3-tier option, but we initially had better results with 2-tier, so we don't use 3-tier. It doesn't have the modifications we made to 2-tier.</blockquote>
 	    </li>
-	    <li> SampleRNN paper reviewer comments<sup><a href="#ref">https://openreview.net/forum?id=SkxKPDv5xl</a></sup>:
+	    <li> SampleRNN paper reviewer comments<sup><a href="#ref">[3]</a></sup>:
 		    <blockquote>Table 1 and Figure 4 also show the 2-tier SampleRNN outperforming the 3-tier model in terms of likelihood and human rating respectively, which is very counterintuitive as one would expect longer-range temporal correlations to be even more relevant for music than for speech. This is not discussed at all, I think it would be useful to comment on why this could be happening.</blockquote>
 		 Author's reply:
 		 <blockquote>
@@ -59,7 +59,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     Recall that in the SampleRNN paper, the multiple tiers of the RNN determined the learning of audio patterns at different temporal scales. This is reflected in the following diagram from the paper:
     <figure>
     <img src="8_samplernn.png" width=700px/>
-    <figcaption>Higher RNN tiers map to wider temporal scales <sup><a href="#ref">[3]</a></sup></figcaption>
+    <figcaption>Higher RNN tiers map to wider temporal scales <sup><a href="#ref">[1]</a></sup></figcaption>
     </figure>
     <br>
     The lowest temporal scale (consecutive samples) represents very low-level audio features (e.g. timbre), while higher scales can (hypothetically) go as far as representing repeating choruses or verses minutes apart. As such, it's interesting to note that 2-tiers, or only two temporal scales of learning, performed better than 3-tier, which should hypothetically be enforcing even longer-scale temporal patterns (and music has temporal patterns as coarse as minutes apart, e.g. a repeating chorus).
@@ -85,7 +85,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     self.hidden = tf.keras.layers.Dense(self.dim, activation='relu')       
     self.outputs = tf.keras.layers.Dense(self.q_levels, activation='relu') 
     </pre>
-    An MLP is a simpler, more primitive precursor to the more complex CNN (convolutional neural network like WaveNet) or RNN <sup><a href="#ref">MLPs</a></sup>. This choice is described in the paper as saving computation cost since the sample-to-sample relationship among nearby samples is probably a simple one. They're implying that the more complex non-linearities of music are in the higher tiers, and that small local clusters of samples have a simpler relationships.
+    An MLP is a simpler, more primitive precursor to the more complex CNN (convolutional neural network like WaveNet) or RNN<sup><a href="#ref">[4]</a></sup>. This choice is described in the paper as saving computation cost since the sample-to-sample relationship among nearby samples is probably a simple one. They're implying that the more complex non-linearities of music are in the higher tiers, and that small local clusters of samples have a simpler relationships.
     <br>
     <br>
     Interesting to note is that the Sample MLP takes conditioning (i.e. external influence) from the results of the Frame RNN one tier higher (in samplernn/sample_mlp.py - some parts omitted):
@@ -108,25 +108,25 @@ We use a Softmax because we found that better results were obtained by discretiz
             hidden = self.hidden(inputs + conditioning_frames)                       
             return self.outputs(hidden)                                              
     </pre>
-    Note how the externally-passed conditioning is added to the model's own hidden layers. Another notable feature is that the inputs to the MLP have a 1D convolution applied. This is not described in the paper, but hybrid Conv1D-MLP models do seem to exist in literature<sup><a href="#ref">booold claim</a></sup>. It looks to me like in this implementation choice (PRiSM), they applied a hybrid Conv1D/MLP approach, especially since the reference SampleRNN implementation<sup><a href="#ref">soroush</a></sup> does not have any 1D convolutions in the SampleRNN code.
+    Note how the externally-passed conditioning is added to the model's own hidden layers. Another notable feature is that the inputs to the MLP have a 1D convolution applied. This is not described in the paper, but a hybrid Conv1D-MLP model does exist in literature<sup><a href="#ref">[5]</a></sup>. It looks to me like in this implementation choice (PRiSM), they applied a hybrid Conv1D/MLP approach, especially since the reference SampleRNN implementation<sup><a href="#ref">[6]</a></sup> does not have any 1D convolutions in the SampleRNN code.
     <br>
     <br>
     The summary of the first tier is that it establishes the lowest level of sample-to-sample relations in the input waveforms, just like the first 1D convolution of WaveNet.
     <br>
     <br>
-    Support for MLP as first layer:
+    I actually found support for MLP as first layer in a different paper<sup><a href="#ref">[7]</a></sup>:
     <blockquote>
     As in the conventional 2D CNNs, the input layer is a passive layer that receives the raw 1D signal and the output layer is a MLP layer with the number of neurons equal to the number of classes
     </blockquote>
-    We can see this is exactly the case - this convention carried over from conventional 2D CNN models, since the SampleMLP has the same number of outputs as the quantization channels (256). (SOURCE: https://arxiv.org/pdf/1905.03554.pdf)
+    This seems to fit - the convention carried over from conventional 2D CNN models, since the SampleMLP has the same number of outputs as the quantization channels (256).
     <h4>GRU and LSTM - different types of RNN</h4>
-    The SampleRNN authors used different choices (GRU and LSTM) of memory cell in the RNN, and concluded that the GRU performed best. Let's take a detour into this excellent overview paper on the use of GRU vs. LSTM gates in RNNs<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
+    The SampleRNN authors used different choices (GRU and LSTM) of memory cell in the RNN, and concluded that the GRU performed best. Let's take a detour into this excellent overview paper on the use of GRU vs. LSTM gates in RNNs<sup><a href="#ref">[8]</a></sup>.
     <br>
     <br>
     Recall that in the WaveNet overview, I talked about the vanishing gradient problem and how they used skip connections in the layer of convolutions to solve it. As the network gets deeper, small gradients tend to 0 and the model no longer knows how to improve. There need to be backward connections that jump several layers to connect the output closer to the input.
     <br>
     <br>
-    In a recurrent neural network, this backward memory to solve the vanishing gradient problem is solved by using LSTM (long short-term memory) units<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>:
+    In a recurrent neural network, this backward memory to solve the vanishing gradient problem is solved by using LSTM (long short-term memory) units<sup><a href="#ref">[8]</a></sup>:
     <blockquote>
     Unlike to the traditional recurrent unit which overwrites its content at each time-step (see Eq. (2)), an  LSTM  unit  is  able  to  decide  whether  to  keep  the  existing  memory  via  the  introduced  gates.
     Intuitively, if the LSTM unit detects an important feature from an input sequence at early stage, it easily carries this information (the existence of the feature) over a long distance, hence, capturing potential long-distance dependencies.
@@ -140,7 +140,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     <img src="samplernn_gated_rnn.png" width=600px />
     <br>
     <br>
-    In the WaveNet overview, I described how PixelCNN started using non-linear functions, sigmoid and tanh, to model non-linearities in the same way that an LSTM did in PixelRNN. Here, we come full circle and learn that the sigmoid and tanh functions are also implicated inside the implementation of LSTM and GRU units<sup><a href="#ref">https://arxiv.org/pdf/1412.3555v1.pdf</a></sup>.
+    In the WaveNet overview, I described how PixelCNN started using non-linear functions, sigmoid and tanh, to model non-linearities in the same way that an LSTM did in PixelRNN. Here, we come full circle and learn that the sigmoid and tanh functions are also implicated inside the implementation of LSTM and GRU units<sup><a href="#ref">[8]</a></sup>.
     <br>
     <br>
     The authors conclude that both GRU- and LSTM-RNNs are an improvement over regular RNNs for modeling more complex relationships, and they demonstrate that GRUs train more efficiently.
@@ -321,7 +321,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     Here we see a key distinction between SampleRNN and WaveNet. WaveNet uses the weights of the dilated convolution network to predict samples with knowledge of different temporal scales built in. SampleRNN is using patterns learned at broad temporal scales to condition the lower temporal scales - this means that SampleRNN's <b>choice</b> of high-level/long-term temporal feature <b>feeds into the subsequent choices</b> for the low-level temporal feature predictions.
     <br>
     <br>
-    The optimizers are the same. The loss function is in fact the same as WaveNet, except that WaveNet used TensorFlow 1's <code>softmax_cross_entropy_with_logits</code> function<sup><a href="#ref">oldapi_loss</a></sup>, while SampleRNN uses a slightly different API<sup><a href="#ref">newapi_loss</a></sup>,<code>SparseCateoricalCrossentropy</code>. The difference is explained simply that if your data is one-hot encoded (i.e. 256-bit mu-law integers expanded into a vector of 256 0s or 1s, like WaveNet), you would use the softmax cross entropy function, whereas if they're integers (like SampleRNN), you would use a sparse softmax cross entropy function.
+    The optimizers are the same. The loss function is in fact the same as WaveNet, except that WaveNet used TensorFlow 1's <code>softmax_cross_entropy_with_logits</code> function<sup><a href="#ref">[9]</a></sup>, while SampleRNN uses a slightly different API<sup><a href="#ref">[10]</a></sup>,<code>SparseCateoricalCrossentropy</code>. The difference is explained simply that if your data is one-hot encoded (i.e. 256-bit mu-law integers expanded into a vector of 256 0s or 1s, like WaveNet), you would use the softmax cross entropy function, whereas if they're integers (like SampleRNN), you would use a sparse softmax cross entropy function.
     <br>
     <br>
     We can also see the input data is batched as in WaveNet, indicating similar use of mini-batch iterative training (aka mini-batch Stochastic Gradient Descent):
@@ -357,10 +357,20 @@ We use a Softmax because we found that better results were obtained by discretiz
     The above code is the equivalent of the training loop of WaveNet, where the SampleRNN model exposes its trainable variables and the Tensorflow library is leveraged to use the loss function above to train the model.
     <br>
     <br>
-    Note a detail of SampleRNN is that they're using the keras EarlyStopping<sup><a href="#ref">keras earlystop</a></sup> which stops training if it predicts that the model is not improving enough to be worthwhile. In WaveNet, the training proceeds for as many steps as the user requested.
-    <h1 id="ref">References</h2>
+    Note a detail of SampleRNN is that they're using the keras EarlyStopping<sup><a href="#ref">[11]</a></sup> which stops training if it predicts that the model is not improving enough to be worthwhile. In WaveNet, the training proceeds for as many steps as the user requested.
+    <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://arxiv.org/abs/1612.07837">SampleRNN: An Unconditional End-to-End Neural Audio Generation Model - arXiv.org</a></li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN#training-samplernn-3-tier">Training SampleRNN (3-tier) - dadabots_sampleRNN GitHub README</a></li>
+      <li><a href="https://openreview.net/forum?id=SkxKPDv5xl">SampleRNN: An Unconditional End-to-End Neural Audio Generation Model | OpenReview comments</a></li>
+      <li><a href="https://machinelearningmastery.com/neural-networks-crash-course/">Crash Course on Multi-Layer Perceptron Neural Networks - MachineLearningMastery.com</a></li>
+      <li><a href="https://ieeexplore.ieee.org/document/9036966">Hybrid Deep Learning Approach for Multi-Step-Ahead Daily Rainfall Prediction Using GCM Simulations - IEEE Xplore</a></li>
+      <li><a href="https://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017 - GitHub, reference implementation</a></li>
+      <li><a href="https://arxiv.org/pdf/1905.03554.pdf">1D ConvolutionalNeural Networks and Applications - A Survey - arXiv.org paper</a></li>
+      <li><a href="https://arxiv.org/pdf/1412.3555v1.pdf">Empirical Evaluation of Gated Recurrent Neural Networkson Sequence Modeling - arXiv.org paper</a></li>
+      <li><a href="https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/nn/softmax_cross_entropy_with_logits">tf.nn.softmax_cross_entropy_with_logits - TensorFlow Documentation</a></li>
+      <li><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy">tf.keras.losses.SparseCategoricalCrossentropy | TensorFlow Core v2.3.0</a></li>
+      <li><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/EarlyStopping">tf.keras.callbacks.EarlyStopping | TensorFlow Core v2.3.0</a></li>
     </ol>
   </body>
 </html>

@@ -16,7 +16,7 @@
     Let's run some experiments with the same WaveNet implementation that I dissected in the overview. I didn't need to make any tweaks or modifications: I was able to use the same conda environment I used for StyleGAN2 in the <a href="./album_art.html">album art generation</a> page, since both models depend on Tensorflow 1.
     <br>
     <br>
-    I also had to export the same environment variable to support my RTX 2070 Super, <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code>.
+    The original is <a href="https://github.com/ibab/tensorflow-wavenet">is here</a> (the same as in the overview/dissection), and my fork <a href="https://github.com/sevagh/tensorflow-wavenet">is here</a>. I also had to export the same environment variable to support my RTX 2070 Super, <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code>.
 
     <h2>Training data preparation</h2>
 
@@ -162,7 +162,7 @@
     </audio>
     <br>
     <br>
-    This is not the best, but not bad. Definitely better than 3-tier SampleRNN - the music sounds like Periphery, but with pretty bad timing - the note onsets seem mashed together and don't flow. This could be a result of the too-small receptive field<sup><a href="#ref">wavenet paper</a></sup>:
+    This is not the best, but not bad. Definitely better than 3-tier SampleRNN - the music sounds like Periphery, but with pretty bad timing - the note onsets seem mashed together and don't flow. This could be a result of the too-small receptive field<sup><a href="#ref">[1]</a></sup>:
     <blockquote>
     Although it is difficult to quantitatively evaluate these models, a subjective evaluation is possible by listening to the samples they produce. We found that enlarging the receptive field was crucial to obtain samples that sounded musical. Even with a receptive field of several seconds, the models did not enforce long-range consistency which resulted in second-to-second variations in genre, instrumentation, volume and sound quality. Nevertheless, the samples were often harmonic and aesthetically pleasing, even when produced by unconditional models.
     </blockquote>
@@ -186,13 +186,13 @@
 
 			     increase this way
     </pre>
-    Here<sup><a href="#ref">https://github.com/ibab/tensorflow-wavenet/issues/265</a></sup> we see a GitHub user discussing their plans to increase the receptive field and run more experiments:
+    <a href="https://github.com/ibab/tensorflow-wavenet/issues/265">Here</a> we see a GitHub user discussing their plans to increase the receptive field and run more experiments:
     <blockquote>
     I was training on 2 files, each about a half hour long. Sample rate was set to 44.1k and the receptive field was about a second - 40100 samples or so - so [1,...4096,1,...4096,1,...4096,1,...4096,1,...4096].
 
     I'm about to start a test with more like 50 files ~ 10hrs of music, and going to see if I can get the receptive field to be closer to 3 seconds.
     </blockquote>
-    However, here's a counterpoint from the dadabots<sup><a href="https://github.com/ibab/tensorflow-wavenet/issues/192#issuecomment-354496940"></a></sup> who make the case (sensible, to me) that the receptive field in WaveNet should be <i>smaller</i> rather than bigger:
+    However, <a href="https://github.com/ibab/tensorflow-wavenet/issues/192#issuecomment-354496940">here's a counterpoint from the dadabots</a> who make the case (sensible, to me) that the receptive field in WaveNet should be <i>smaller</i> rather than bigger:
     <blockquote>
     I could be wrong, but IMO I think decreasing the wavenet receptive field is the answer to more musical output.
     
@@ -202,16 +202,14 @@
     
     Because these unconditioned predict-the-next-sample models only learn bottom-up as they train. First noise, then texture, then individual hits and notes, then phrases and riffs, then rhythm if you're lucky. The last thing they would learn is song composition or music theory. Struggles to see the forest for the trees.
     </blockquote>
-    In short, the WaveNet paper stating that "a larger receptive field should be better for higher level musical structure" could be analogous to the SampleRNN paper stating that "3 tiers should be better for higher level musical structure than 2" - in practise, not as good.
+    I'm curious whether the WaveNet paper stating that "a larger receptive field should be better for higher level musical structure" could be considered analogous to the SampleRNN paper stating that "3 tiers should be better for higher level musical structure than 2" - in practise, not so good for music.
 
     <h1>Mini-conclusion</h1>
     Ultimately due to the computation cost of re-running training (and not quite knowing which parameter to tweak or why), I settled for just the above - showing that with modern hardware (and a powerful GPU), 40 hours of time, and by following the README, you can generate some form of learned music with WaveNet.
 
     <h1 id="ref">References</h2>
     <ol>
-      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN">dadabots_samplRNN - GitHub</a></li>
-      <li><a href="https://github.com/sevagh/dadabots_sampleRNN">dadabots_samplRNN - my fork on GitHub</a></li>
-      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">dadabots SampleRNN installation instructions</a></li>
+      <li><a href="https://arxiv.org/abs/1609.03499">WaveNet: A Generative Model for Raw Audio - arXiv.org</a></li>
     </ol>
   </body>
 </html>

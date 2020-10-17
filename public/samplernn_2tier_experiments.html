@@ -197,19 +197,20 @@
     </audio>
     <br>
     <br>
-    In their raw form, the 200 disjoint 20-second output clips have varying musical content and need to be curated. This is a personal choice - the dadabots discuss the role of curation after generating 10 hours of music with their model<sup><a href="#ref">dadabots paper</a></sup>, and I wanted to work on a curation script. I chose to work with 200x 20s wav files as my curation base.
+    In their raw form, the 200 disjoint 20-second output clips have varying musical content and need to be curated. This is a personal choice - the dadabots discuss the role of curation after generating 10 hours of music with their model<sup><a href="#ref">[4]</a></sup>, and I wanted to work on a curation script. I chose to work with 200x 20s wav files as my curation base.
 
     <h1>Mini-conclusion</h1>
-    This sounds great and is the best performing music model, as promised by the dadabots in their paper<sup><a href="#ref">dadabots paper</a></sup>. Their paper describes the modifications and hyperparameters they made to SampleRNN, but in summary:
+    This sounds great and is the best performing music model, as promised by the dadabots in their paper<sup><a href="#ref">[4]</a></sup>. Their paper describes the modifications and hyperparameters they made to SampleRNN, but the important hyperparameters are:
     <blockquote>
     We use a 2-tier SampleRNN with 256 embedding size, 1024 dimensions, 5 layers, LSTM, 256 linear quantization levels, 16kHz or 32kHz sample rate, skip connections, and a 128 batch size, using weight normalization. The initial state h0 is randomized to generate more variety
     </blockquote>
 
-    <h1 id="ref">References</h2>
+    <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN">dadabots_samplRNN - GitHub</a></li>
       <li><a href="https://github.com/sevagh/dadabots_sampleRNN">dadabots_samplRNN - my fork on GitHub</a></li>
       <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN/wiki/Installing-Dadabots-SampleRNN-on-Ubuntu">dadabots SampleRNN installation instructions</a></li>
+      <li><a href="https://arxiv.org/abs/1811.06633">Generating Albums with SampleRNN to Imitate Metal, Rock, and Punk Bands - arXiv.org</a></li>
     </ol>
   </body>
 </html>

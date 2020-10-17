@@ -45,9 +45,9 @@
     There is an implementation of Tacotron 2 published by NVIDIA<sup><a href="#ref">[2]</a></sup>, which uses their own WaveGlow<sup><a href="#ref">[3]</a></sup> (instead of WaveNet) as the vocoder. This indicates to me that the vocoder layer can be swapped out for any other waveform-generative model, e.g. SampleRNN, as long as its trained appropriately on mel spectrograms.
     <br>
     <br>
-    If we follow the link to NVIDIA's website announcing WaveGlow<sup><a href="#ref">https://nv-adlr.github.io/WaveGlow</a></sup>, we can find the <a href="https://github.com/r9y9/wavenet_vocoder">wavenet_vocoder</a> project, which is WaveNet conditioned on mel spectrograms, i.e. the vocoder part of Tacotron 2.
+    If we follow the link to NVIDIA's website announcing WaveGlow<sup><a href="#ref">[4]</a></sup>, we can find the <a href="https://github.com/r9y9/wavenet_vocoder">wavenet_vocoder</a> project, which is WaveNet conditioned on mel spectrograms, i.e. the vocoder part of Tacotron 2.
     <h3>How does the WaveNet Vocoder work</h3>
-    The code<sup><a href="#ref">wavenet vocoder</a></sup> advertises a "focus on local and global conditioning of WaveNet, which is essential for vocoder." This follows from the last part of the WaveNet overview where I showed the theoretical implementation of global and local conditioning from the WaveNet paper. There are examples of both global conditioning (i.e. speaker id) and local conditioning (mel spectrogram, i.e. utterances) in <a href="https://r9y9.github.io/wavenet_vocoder/">their demo website</a>.
+    The code<sup><a href="#ref">[5]</a></sup> advertises a "focus on local and global conditioning of WaveNet, which is essential for vocoder." This follows from the last part of the WaveNet overview where I showed the theoretical implementation of global and local conditioning from the WaveNet paper. There are examples of both global conditioning (i.e. speaker id) and local conditioning (mel spectrogram, i.e. utterances) in <a href="https://r9y9.github.io/wavenet_vocoder/">their demo website</a>.
     <br>
     <br>
     In practise, what does it look like to condition WaveNet with mel spectrograms? In the model code, the local conditioning is set using <code>cin_channels</code>. In <code>train.py</code>, setting <code>cin_channels > 0 (default: 80)</code> (80 = typical number of frequency channels in the mel scale) enables local conditioning, and changes how training data is loaded:
@@ -110,7 +110,7 @@
         # Return a tuple describing this training example:
         return (audio_filename, mel_filename, N, text)
     </pre>
-    Finally, we saw in the WaveNet paper that the global and local conditioning are implicated in the activation function inside the neural network:
+    Finally, we saw in the WaveNet paper<sup><a href="#ref">[6]</a></sup> that the global and local conditioning are implicated in the activation function inside the neural network:
     <br>
     <br>
     Global:
@@ -165,11 +165,6 @@
         x = (x + residual) * math.sqrt(0.5)
         return x, s
     </pre>
-    Notice that different convolutions are applied for local and global - <code>self.conv1x1c</code> and <code>self.conv1x1g</code>. Let's look at the difference:
-    <pre>
-    self.conv1x1c = Conv1d1x1(cin_channels, gate_channels, bias=False)
-    self.conv1x1g = Conv1d1x1(gin_channels, gate_channels, bias=False)
-    </pre>
     A last thing to check is how to create an utterance based on an input of mel spectrograms? As per the author, <code>synthesis.py</code> is not working, but the usage should resemble:
     <pre>
     $ python synthesis.py ${checkpoint_path} ${output_dir} --preset=<json> --hparams="parameters you want to override"
@@ -185,12 +180,12 @@
     The above inspected the standalone wavenet_vocoder project, but how does it look embedded inside the larger Tacotron 2 project?
     <br>
     <br>
-    We can find the reference to the WaveGlow vocoder (similar enough to WaveNet for our purposes) in the NVIDIA tacotron2 codebase<sup<a href="#ref">nv tacotron2</a></sup>, in the file <code>inference.ipynb</code>. Since it's a Jupyter notebook, there's a visual ui in GitHub<sup><a href="#ref">https://github.com/NVIDIA/tacotron2/blob/master/inference.ipynb</a></sup>:
+    We can find the reference to the WaveGlow vocoder (similar enough to WaveNet for our purposes) in the NVIDIA tacotron2 codebase<sup><a href="#ref">[2]</a></sup>, in the file <code>inference.ipynb</code>. Since it's a Jupyter notebook, there's a visual ui in GitHub<sup><a href="#ref">[7]</a></sup>:
     <br>
     <img src="tacotron2_waveglow.png" width="800px"/>
     <br>
     <br>
-    Once the mel spectrogram is obtained from the Tacotron 2 model, they're passed to the WaveGlow "infer" function. We can find this in the WaveGlow<sup><a href="#ref">waveglow</a></sup> source code, in the file <code>glow.py</code>:
+    Once the mel spectrogram is obtained from the Tacotron 2 model, they're passed to the WaveGlow "infer" function. We can find this in the WaveGlow<sup><a href="#ref">[3]</a></sup> source code, in the file <code>glow.py</code>:
     <pre>
     def infer(self, spect, sigma=1.0):
         spect = self.upsample(spect)
@@ -232,7 +227,7 @@
     </pre>
    
     <h2>Char2Wav</h2>
-    Char2Wav<sup><a href="#ref">char2wav paper</a></sup> is included, for the purposes of this report, to show that SampleRNN can also be conditioned like WaveNet. The Char2Wav block diagram is as follows:
+    Char2Wav<sup><a href="#ref">[8],[9]</a></sup> is included, for the purposes of this report, to show that SampleRNN can also be conditioned like WaveNet. The Char2Wav block diagram is as follows:
     <br>
     <img src="./char2wav_diagram.png" width="350px"/>
     <br>
@@ -240,14 +235,113 @@
     <blockquote>
     We use a conditional version of the same model (SampleRNN) to learn the mapping from a sequence of vocoder features to corresponding audio samples.  Each vocoder feature frame is added as an extra bias to the corresponding state in the top tier. This allows the module to use the past audio samples and vocoder feature frames to generate the current audio samples.
     </blockquote>
-    Let's look at the code to find out how SampleRNN is conditioned.
+    Let's look at the code to find out how SampleRNN is conditioned. Note that the key word to locate external conditioning in the parrot/SampleRNN code is "features" (not "conditioning" as is the case with Tacotron 2/WaveNet). In Tacotron 2, both terms are used. 
     <h3>Code</h3>
-    There is a reference<sup><a href="#ref">char2wav code https://github.com/sotelo/parrot</a></sup> codebase released, named "parrot". Parrot contains a custom version of conditioned SampleRNN in the path <code>sampleRNN/models/conditional/three_tier.py</code>.
+    There is a reference<sup><a href="#ref">[10]</a></sup> codebase released, named "parrot". Parrot contains a custom version of conditioned SampleRNN in the path <code>sampleRNN/models/conditional/three_tier.py</code>.
     <br>
     <br>
+    In the vanilla unconditioned 3-tier (similar to 2-tier) SampleRNN overview, we saw that the larger frames fed into the next lower tier for generating audio:
+    <pre>
+    # UPPER TIER
+    big_frame_outputs = self.big_frame_rnn(
+        tf.cast(inputs, tf.float32)[:, : -self.big_frame_size, :]
+    )
+    # MIDDLE TIER
+    frame_outputs = self.frame_rnn(
+        tf.cast(inputs, tf.float32)[:, self.big_frame_size-self.frame_size : -self.frame_size, :],
+        conditioning_frames=big_frame_outputs,
+    )
+    # LOWER TIER (SAMPLES)
+    sample_output = self.sample_mlp(
+        inputs[:, self.big_frame_size - self.frame_size : -1, :],
+        conditioning_frames=frame_outputs,
+    )
+    </pre>
+    In parrot, we see that the external conditioning from the vocoder is passed to the big-frame RNN, in <code>sampleRNN/models/conditional/three_tier.py</code>:
+    <pre>
+    def big_frame_level_rnn(input_sequences, h0, reset, features):
+        """
+        input_sequences.shape: (batch size, n big frames * BIG_FRAME_SIZE)
+        h0.shape:              (batch size, N_BIG_RNN, BIG_DIM)
+        reset.shape:           ()
+        features.shape:        (batch size, SEQ_LEN//80, 63)
+        output[0].shape:       (batch size, n frames, DIM)
+        output[1].shape:       same as h0.shape
+        output[2].shape:       (batch size, seq len, Q_LEVELS)
+        """
+        frames = input_sequences.reshape((
+            input_sequences.shape[0],
+            input_sequences.shape[1] // BIG_FRAME_SIZE,
+            BIG_FRAME_SIZE
+        ))
+       
+        ##### break_point
+    
+        # Fuse previous frame and current vocoder features
+        rnn_inp = lib.ops.Linear(
+            'BigFrameLevel.rnn_inp_fusion',
+            [BIG_FRAME_SIZE, 63],
+            BIG_DIM,
+            [frames, features],
+            initialization='he',
+            weightnorm=WEIGHT_NORM
+        )
+    
+        rnn_params = [N_BIG_RNN,
+                      BIG_DIM,
+                      BIG_DIM,
+                      rnn_inp,
+                      h0,
+                      WEIGHT_NORM,
+                      #True]  # TODO:
+                      SKIP_CONN]
+    </pre>
+    As usual, I've omitted lines of code since I'm only showing the location and use of the "features" parameter. But what are these features? The size of 80 hints that it could be a mel spectrogram. These are passed in from <code>train.py</code>:
+    <pre>
+    features, features_mask, labels, labels_mask, speaker, start_flag, raw_sequence = \
+        parrot.symbolic_input_variables()
+    
+    cost, extra_updates, attention_vars, cost_raw = parrot.compute_cost(
+        features, features_mask, labels, labels_mask,
+        speaker, start_flag, args.batch_size, raw_audio=raw_sequence)
+    </pre>
+    The data is loaded by the <code>datasets.py</code> function:
+    <pre>
+    assert labels_type in [
+        'full_labels', 'phonemes', 'unconditional',
+        'unaligned_phonemes', 'text']
+
+    dataset = VoiceData(voice=voice, which_sets=which_sets)
+
+    data_stream = DataStream.default_stream(dataset, iteration_scheme=scheme)
+    segment_sources = ('features', 'features_mask')
+    all_sources = segment_sources
+
+    if raw_data:
+        raw_sources = ('raw_audio', )
+        all_sources += raw_sources
+    else:
+        raw_sources = ()
+
+    if labels_type != 'unconditional':
+        all_sources += ('labels', )
+        data_stream = Rename(data_stream, {labels_type: 'labels'})
+
+    if labels_type in ['full_labels', 'phonemes']:
+        segment_sources += ('labels',)
+
+    elif labels_type in ['unaligned_phonemes', 'text']:
+        all_sources += ('labels_mask', )
+    </pre>
+    Like WaveNet in Tacotron 2 is conditioned from above on mel spectrograms, SampleRNN in Char2wav is conditioned on phonemes. Unfortunately the paper doesn't go into details, and the GitHub code is incomplete (as admitted by the primary author<sup><a href="#ref">[11]</a></sup>). Interesting to note is that one of the dadabots <a href="https://github.com/sotelo/parrot/issues/6">appears in the GitHub issues</a>, which we also saw with WaveNet and will see with Jukebox. This could indicate that in my overall project/exploration, I'm following the well-trodden path of the current state of the art.
+    <br>
+    <br>
+    I can only assume that they have access to datasets that contain phoneme/waveform pairs (the way WaveNet created labelled mel-spectrogram/waveform pairs).
+    <blockquote>
+    </blockquote>
 
     <h2>Jukebox</h2>
-    Jukebox<sup><a href="#ref">[4]</a></sup> solves a different problem of the waveform domain - that of the high dimensionality:
+    Jukebox<sup><a href="#ref">[12]</a></sup> solves a different problem of the waveform domain - that of the high dimensionality:
     <blockquote>
     The key bottleneck is that modeling the raw audio directly introduces extremely long-range dependencies, making it computationally challenging to learn the high-level semantics of music. A way to reduce the difficulty is to learn a lower-dimensional encoding of the audio with the goal of losing the less important information but retaining most of the musical information.
     </blockquote>
@@ -256,7 +350,7 @@
     We introduce Jukebox, a model that generates music with singing in the raw audio domain. We tackle the long context of raw audio using a multi-scale VQ-VAE to compress it to discrete codes, and modeling those using autoregressive Transformers.
     </blockquote>
     <h3>VQ-VAE</h3>
-    VQ-VAE<sup><a href="#ref">[5]</a></sup> stands for Vector Quantized Variational Autoencoder. It seems like VQ-VAEs are an improvement over standard VAEs, which are neural network-based encoding/decoding scheme. So in a sense, Jukebox is using "mini neural networks" to encode the raw waveform into a more compact representation, and <i>then</i> applying WaveNet on the VQ-VAEs, or compressed space<sup><a href="#ref">[6]</a></sup>:
+    VQ-VAE<sup><a href="#ref">[13]</a></sup> stands for Vector Quantized Variational Autoencoder. It seems like VQ-VAEs are an improvement over standard VAEs, which are neural network-based encoding/decoding scheme. So in a sense, Jukebox is using "mini neural networks" to encode the raw waveform into a more compact representation, and <i>then</i> applying WaveNet on the VQ-VAEs, or compressed space<sup><a href="#ref">[12]</a></sup>:
     <br>
     <img src="vae.png" width=400px/>
     <br>
@@ -276,13 +370,21 @@
     When using only the sample-level reconstruction loss, the model learns to reconstruct low frequencies only. To capture mid-to-high frequencies, we add a spectral loss which ... encourages the model to match the spectral components without paying attention to phase which is more difficult to learn.
     </blockquote>
     <h3>Code</h3>
-    The reference code is <a href="reference jukebox">here</a> but the dadabots have began <a href="dadabots fork">experimenting with it</a> in their own fork - they probably have some interesting new ideas in the pipeline.
+    The reference code is <a href="https://github.com/openai/jukebox/">here</a> but the dadabots have began <a href="https://github.com/ZVK/jukebox">experimenting with it</a> in their own fork - they probably have some interesting new ideas in the pipeline.
 
-    <h1 id="ref">References</h2>
+    <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://arxiv.org/abs/1612.07837">Tacotron 2, a neural network architecture for speech synthesis directly from text- arXiv.org</a></li>
       <li><a href="https://github.com/NVIDIA/tacotron2">NVIDIA/tacotron2 - GitHub</a></li>
       <li><a href="https://github.com/NVIDIA/waveglow">NVIDIA/waveglow - GitHub</a></li>
+      <li><a href="https://nv-adlr.github.io/WaveGlow">WaveGlow: a Flow-based Generative Network for Speech Synthesis</a></li>
+      <li><a href="https://github.com/r9y9/wavenet_vocoder">wavenet_vocoder - GitHub</a></li>
+      <li><a href="https://arxiv.org/abs/1609.03499">WaveNet: A Generative Model for Raw Audio - arXiv.org</a></li>
+      <li><a href="https://github.com/NVIDIA/tacotron2/blob/master/inference.ipynb">tacotron2/inference.ipynb - NVIDIA/tacotron2</a></li>
+      <li><a href="https://mila.quebec/wp-content/uploads/2017/02/end-end-speech.pdf">Char2Wav: End-to-End Speech Synthesis - Mila Quebec PDF paper</a></li>
+      <li><a href="http://josesotelo.com/speechsynthesis/">Char2Wav: End-to-End Speech Synthesis - demo website</a></li>
+      <li><a href="https://github.com/sotelo/parrot">parrot: RNN-based generative models for speech - GitHub</a></li>
+      <li><a href="https://github.com/sotelo/parrot/issues">parrot - GitHub issues</a></li>
       <li><a href="https://arxiv.org/abs/2005.00341">Jukebox: A Generative Model for Music - arXiv.org</a></li>
       <li><a href="https://arxiv.org/abs/1711.00937">Neural Discrete Representation Learning - arXiv.org</a></li>
     </ol>
