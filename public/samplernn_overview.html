@@ -13,10 +13,7 @@
     </div>
 
     <h1>SampleRNN overview</h1>
-    SampleRNN<sup><a href="#ref">[1]</a></sup> uses recurrent neural networks to find patterns in audio waveforms.
-    <br>
-    <br>
-    Since I can't describe it better than the paper itself, this is their rationale for why RNNs are suitable for audio waveforms:
+    SampleRNN<sup><a href="#ref">[1]</a></sup> uses recurrent neural networks to find patterns in audio waveforms:
     <br>
     <br>
     <img src="samplernn_rnn.png" width=750px/>
@@ -39,6 +36,16 @@
 We use a Softmax because we found that better results were obtained by discretizing the audio signals (also see van den Oord et al. (2016)) and outputting a Multinoulli distribution rather than using a Gaussian or Gaussian mixture to represent the conditional density of the original real-valued signal.
     </blockquote>
     The reference implementation by the original authors of the paper, <a href="https://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017</a>, is less readable (to me) than the <a href="https://github.com/rncm-prism/prism-samplernn">PRiSM-SampleRNN</a> implementation, so I'll use the second for the code dissection.
+
+    <h2>RNN primer</h2>
+    From the <a href="https://jmvalin.ca/demo/rnnoise/">RNNoise website</a> (expanded on more in the <a href="./hybrid.html">hybrid approach page of this project</a>) comes a succint overview on the use of RNNs for modelling temporal sequences:
+    <blockquote>
+	    <p>Recurrent neural networks (RNN) are very important here because they make it possible to model time sequences instead of just considering input and output frames independently. This is especially important for noise suppression because we need time to get a good estimate of the noise. For a long time, RNNs were heavily limited in their ability because they could not hold information for a long period of time and because the gradient descent process involved when back-propagating through time was very inefficient (the vanishing gradient problem). Both problems were solved by the invention of gated units, such as the Long Short-Term Memory (LSTM), the Gated Recurrent Unit (GRU), and their many variants.</p>
+
+	    <p>RNNoise uses the Gated Recurrent Unit (GRU) because it performs slightly better than LSTM on this task and requires fewer resources (both CPU and memory for weights). Compared to simple recurrent units, GRUs have two extra gates. The reset gate controls whether the state (memory) is used in computing the new state, whereas the update gate controls how much the state will change based on the new input. This update gate (when off) makes it possible (and easy) for the GRU to remember information for a long period of time and is the reason GRUs (and LSTMs) perform much better than simple recurrent units.</p>
+    </blockquote>
+
+    <img src="./rnnoise_rnn_gates.png" width="800px">
 
     <h2>2-tier vs. 3-tier SampleRNN</h2>
     Something to note is that various sources mention that 2-tier SampleRNN creates better music than 3-tier SampleRNN:
@@ -179,7 +186,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     
             frame_outputs = self.rnn(input_frames)
     </pre>
-    Interesting to note is that skip connections are used in the code but not mentioned in the paper. As covered, skip connections in WaveNet were to solve the vanishing gradient problem - but, in SampleRNN, the use of GRUs (or LSTMs) in the RNN should hypothetically solve the vanishing gradient problem already.
+    Interesting to note is that skip connections are used in the code but not mentioned in the paper. As covered, skip connections in WaveNet were to solve the vanishing gradient problem - but, in SampleRNN, the use of GRUs (or LSTMs) in the RNN should hypothetically solve the vanishing gradient problem. However, there is support in literature for skip RNNs<sup><a href="#ref">[9]</a></sup> - perhaps combining both brings even better performance.
     <br>
     <br>
     Another thing to note is the upsampling of the samples to select samples that are spaced 16- and 64-samples apart for the small and big frames. This is exactly how WaveNet's dilated convolutions worked.
@@ -321,7 +328,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     Here we see a key distinction between SampleRNN and WaveNet. WaveNet uses the weights of the dilated convolution network to predict samples with knowledge of different temporal scales built in. SampleRNN is using patterns learned at broad temporal scales to condition the lower temporal scales - this means that SampleRNN's <b>choice</b> of high-level/long-term temporal feature <b>feeds into the subsequent choices</b> for the low-level temporal feature predictions.
     <br>
     <br>
-    The optimizers are the same. The loss function is in fact the same as WaveNet, except that WaveNet used TensorFlow 1's <code>softmax_cross_entropy_with_logits</code> function<sup><a href="#ref">[9]</a></sup>, while SampleRNN uses a slightly different API<sup><a href="#ref">[10]</a></sup>,<code>SparseCateoricalCrossentropy</code>. The difference is explained simply that if your data is one-hot encoded (i.e. 256-bit mu-law integers expanded into a vector of 256 0s or 1s, like WaveNet), you would use the softmax cross entropy function, whereas if they're integers (like SampleRNN), you would use a sparse softmax cross entropy function.
+    The optimizers are the same. The loss function is in fact the same as WaveNet, except that WaveNet used TensorFlow 1's <code>softmax_cross_entropy_with_logits</code> function<sup><a href="#ref">[10]</a></sup>, while SampleRNN uses a slightly different API<sup><a href="#ref">[11]</a></sup>,<code>SparseCateoricalCrossentropy</code>. The difference is explained simply that if your data is one-hot encoded (i.e. 256-bit mu-law integers expanded into a vector of 256 0s or 1s, like WaveNet), you would use the softmax cross entropy function, whereas if they're integers (like SampleRNN), you would use a sparse softmax cross entropy function.
     <br>
     <br>
     We can also see the input data is batched as in WaveNet, indicating similar use of mini-batch iterative training (aka mini-batch Stochastic Gradient Descent):
@@ -357,7 +364,7 @@ We use a Softmax because we found that better results were obtained by discretiz
     The above code is the equivalent of the training loop of WaveNet, where the SampleRNN model exposes its trainable variables and the Tensorflow library is leveraged to use the loss function above to train the model.
     <br>
     <br>
-    Note a detail of SampleRNN is that they're using the keras EarlyStopping<sup><a href="#ref">[11]</a></sup> which stops training if it predicts that the model is not improving enough to be worthwhile. In WaveNet, the training proceeds for as many steps as the user requested.
+    Note a detail of SampleRNN is that they're using the keras EarlyStopping<sup><a href="#ref">[12]</a></sup> which stops training if it predicts that the model is not improving enough to be worthwhile. In WaveNet, the training proceeds for as many steps as the user requested.
     <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://arxiv.org/abs/1612.07837">SampleRNN: An Unconditional End-to-End Neural Audio Generation Model - arXiv.org</a></li>
@@ -368,6 +375,7 @@ We use a Softmax because we found that better results were obtained by discretiz
       <li><a href="https://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017 - GitHub, reference implementation</a></li>
       <li><a href="https://arxiv.org/pdf/1905.03554.pdf">1D ConvolutionalNeural Networks and Applications - A Survey - arXiv.org paper</a></li>
       <li><a href="https://arxiv.org/pdf/1412.3555v1.pdf">Empirical Evaluation of Gated Recurrent Neural Networkson Sequence Modeling - arXiv.org paper</a></li>
+      <li><a href="https://arxiv.org/abs/1708.06834">Skip RNN: Learning to Skip State Updates in Recurrent Neural Networks - arXiv.org</a></li>
       <li><a href="https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/nn/softmax_cross_entropy_with_logits">tf.nn.softmax_cross_entropy_with_logits - TensorFlow Documentation</a></li>
       <li><a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/SparseCategoricalCrossentropy">tf.keras.losses.SparseCategoricalCrossentropy | TensorFlow Core v2.3.0</a></li>
       <li><a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/EarlyStopping">tf.keras.callbacks.EarlyStopping | TensorFlow Core v2.3.0</a></li>

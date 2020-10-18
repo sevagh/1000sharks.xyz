@@ -74,12 +74,7 @@
     <a href="/wavenet_overview.html"><h3>WaveNet overview</h3></a>
     <a href="/samplernn_overview.html"><h3>SampleRNN overview</h3></a>
     <a href="/wavenet_derivatives.html"><h3>WaveNet and SampleRNN derivatives - Tacotron 2, Jukebox, Char2Wav</h3></a>
-
-    <h2>Differentiable DSP</h2>
-
-    intro blurb here
-
-    <h3>(TODO) Magenta DDSP overview</h3>
+    <a href="/hybrid.html"><h3>ML/DSP hybrids - Magenta DDSP, RNNoise</h3></a>
 
     <h1>Experiments</h1>
     A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[5]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.
@@ -116,10 +111,6 @@
 
     <a href="./wavenet_experiments.html"><h3>WaveNet experiments</h3></a>
 
-    <h3>(TODO) Magenta DDSP case study: Chowning clarinet model</h3>
-
-    Magenta DDSP is more amenable to exploration from a beginner - using DSP building blocks, I can recreate a traditional synthesis block diagram and attempt to set up a machine learning model to "learn" optimal parameters. Moreover, recall that instead of days and weeks of training, the violin synthesis example in the DDSP paper claimed to be trainable in 13 minutes, a big advantage.
-    
     <a href="./curation.html"><h1>Curating neural generated results</h1></a>
 
     <a href="./album_art.html"><h1>Album art generation</h1></a>
@@ -156,6 +147,7 @@
       <li>Modify the PRiSM SampleRNN code, which is modern and clean, to add the 2-tier implementation - benefit from the new codebase and the better model for music</li>
       <li>Using more advanced models to create more structured outputs - the current state of the art seems to be Jukebox<sup><a href="#ref">[12]</a></sup></li>
       <li>Build a derivative of WaveNet or SampleRNN for a more specific task (e.g. amp modeling), to demonstrate the extensibility of sample-based/waveform domain machine learning models</sup></li>
+      <li>Build a hybrid ML/DSP model that's trainable, e.g. recreate the Chowning clarinet model with Magenta DDSP blocks and train it on clarinet clips to find optimal parameters</li>
     </ul>
 
     <h1 id="ref">References</h1>
