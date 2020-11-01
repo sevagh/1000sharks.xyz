@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./mumt618_report.html">MUMT 618 report</a>
+      <a href="./">1000sharks demo</a>
+    </div>
+
+    <h1>DDSP experiments - clarinet synthesis</h1>
+    The basic instrument synthesis model in the DDSP paper, which I showed in the <a href="./hybrid.html">DDSP overview</a> page, is the single instrument autoencoder, which used additive sinewave synthesis + filtered noise to synthesize violin sounds. The training data is first encoded into a set of features including f0 and loudness, and their primary example is based on the violin.
+    <br>
+    <br>
+    DDSP's selling point is that it provides familiar DSP elements in a differentiable (aka machine learnable) platform. As such, I chose to work with the clarinet in my DDSP experiments, since I will attempt to create a differentiable version of the Chowning clarinet model (which is a straightforward model).
+    <h2>Chowning clarinet model</h2>
+    Chowning clarinet FM synthesis model<sup><a href="#ref">[1]</a></sup>:
+    <img src="./chowning_clarinet.png" width=600px>
+    <h3>C++ Stk implementation + samples</h3>
+    <h2>Training the DDSP single instrument autoencoder</h2>
+    Following the same procedure as other experiments, I forked the original code<sup><a href="#ref">[1]</a></sup> into my own GitHub account<sup><a href="#ref">[2]</a></sup> so I could modify code as needed for my experiments in this project.
+    <br>
+    <br>
+    First: what are .gin files? DDSP mixes Python files with gin files, and all of the DDSP training commands are Python scripts which take gin files as arguments. Gin is a Google framework<sup><a href="#ref">[3]</a></sup> for Python dependency injection. The DDSP README<sup><a href="#ref">[4]</a></sup> states that:
+    <blockquote>
+    The main advantage of a ProcessorGroup is that it can be defined with a .gin file, allowing flexible configurations without having to write new python code for every new DAG.
+    </blockquote>
+    We can see that gin and Python files are mixed in the source code:
+    <pre>
+    sevagh:ddsp $ ls ddsp/training/
+    cloud.py          ddsp_run.py       encoders.py    inference.py     models       preprocessing.py  trainers.py
+    cloud_test.py     decoders.py       evaluators.py  __init__.py      nn.py        __pycache__       train_util.py
+    data_preparation  decoders_test.py  eval_util.py   metrics.py       nn_test.py   README.md
+    data.py           docker            gin            metrics_test.py  plotting.py  summaries.py
+    sevagh:ddsp $
+    sevagh:ddsp $ ls ddsp/training/gin/datasets/
+    base.gin  __init__.py  nsynth.gin  README.md  tfrecord.gin
+    </pre>
+    For example let's look at the gin files (which represent different collections of Python code) for creating a custom datasets. First the file <code>base.gin</code>:
+    <pre>
+    sevagh:ddsp $ cat ddsp/training/gin/datasets/base.gin
+    # -*-Python-*-
+    import ddsp.training
+    
+    # Evaluate
+    evaluate.batch_size = 32
+    evaluate.num_batches = 5  # Depends on dataset size.
+    
+    # Sample
+    sample.batch_size = 16
+    sample.num_batches = 1
+    sample.ckpt_delay_secs = 300  # 5 minutes
+    </pre>
+    Followed by <code>tfrecord.gin</code>:
+    <pre>
+    sevagh:ddsp $ cat ddsp/training/gin/datasets/tfrecord.gin
+    # -*-Python-*-
+    include 'datasets/base.gin'
+    
+    # Make dataset with ddsp/training/data_preparation/ddsp_prepare_tfrecord.py
+    # --gin_param="TFRecordProvider.file_pattern='/path/to/dataset*.tfrecord'"
+    
+    # Dataset
+    train.data_provider = @data.TFRecordProvider()
+    evaluate.data_provider = @data.TFRecordProvider()
+    sample.data_provider = @data.TFRecordProvider()
+    </pre>
+    I won't spend more time on gin - the files are easy to read and the commands that use gin files all work.
+    <h3>Python setup + code modifications</h3>
+    The Python setup is mostly covered by the README, but I had to use some extra flags (automatically suggested by the pip tool). I also used a standard virtualenv instead of conda:
+    <pre>
+    $ virtualenv --python=python3 ddsp
+    $ pip install --upgrade ddsp --use-feature=2020-resolver
+    $ pip install IPython
+    $ pip install -U ddsp[data_preparation] --use-feature=2020-resolver
+    </pre>
+    Some minor code changes - firstly a typo:
+    <pre>
+    (ddsp) sevagh:ddsp $ git diff ddsp/training/gin/eval/basic_f0_ld.gin
+    diff --git a/ddsp/training/gin/eval/basic_f0_ld.gin b/ddsp/training/gin/eval/basic_f0_ld.gin
+    index fae718c..06b0db4 100644
+    --- a/ddsp/training/gin/eval/basic_f0_ld.gin
+    +++ b/ddsp/training/gin/eval/basic_f0_ld.gin
+    @@ -3,5 +3,5 @@ evaluators = [
+         @F0LdEvaluator
+     ]
+    
+    -evaluate.evaluator_classes = %evalautors
+    +evaluate.evaluator_classes = %evaluators
+     sample.evaluator_classes = %evaluators
+    </pre>
+    Then, the same memory growth adjustment - in fact some of ddsp's main code supports this flag, but it was missing and required in the dataset preparation script (otherwise it would crash):
+    <pre>
+    (ddsp) sevagh:ddsp $ git diff ddsp/training/data_preparation/ddsp_prepare_tfrecord.py
+    diff --git a/ddsp/training/data_preparation/ddsp_prepare_tfrecord.py b/ddsp/training/data_preparation/ddsp_prepare_tfrecord.py
+    index af6018d..64ea9b6 100644
+    --- a/ddsp/training/data_preparation/ddsp_prepare_tfrecord.py
+    +++ b/ddsp/training/data_preparation/ddsp_prepare_tfrecord.py
+    @@ -63,6 +63,22 @@ flags.DEFINE_list(
+         'pipeline_options', '--runner=DirectRunner',
+         'A comma-separated list of command line arguments to be used as options '
+         'for the Beam Pipeline.')
+    +flags.DEFINE_boolean('allow_memory_growth', False,
+    +                     'Whether to grow the GPU memory usage as is needed by the '
+    +                     'process. Prevents crashes on GPUs with smaller memory.')
+    +
+    +
+    +def allow_memory_growth():
+    +  """Sets the GPUs to grow the memory usage as is needed by the process."""
+    +  gpus = tf.config.experimental.list_physical_devices('GPU')
+    +  if gpus:
+    +    try:
+    +      # Currently, memory growth needs to be the same across GPUs.
+    +      for gpu in gpus:
+    +        tf.config.experimental.set_memory_growth(gpu, True)
+    +    except RuntimeError as e:
+    +      # Memory growth must be set before GPUs have been initialized.
+    +      print(e)
+    
+    
+     def run():
+    @@ -83,6 +99,9 @@ def run():
+    
+     def main(unused_argv):
+       """From command line."""
+    +  if FLAGS.allow_memory_growth:
+    +    allow_memory_growth()
+    +
+       run()
+    </pre>
+    <h3>Dataset preparation</h3>
+    The training data is a collection of 430 single clarinet note recordings from Freesound<sup><a href="#ref">[5]</a></sup>. I unzipped the collection into a directory. DDSP requires the training data to be in the form of TFRecord, which is a format for storing sequential data in Tensorflow. This is done with the script <code>ddsp_prepare_tfrecord</code>:
+    <pre>
+    # dataset prep
+    python -m ddsp.training.data_preparation.ddsp_prepare_tfrecord \
+           --input_audio_filepatterns=/home/sevagh/ddsp-chowning-clarinet/datasets/*wav \
+           --output_tfrecord_path=/home/sevagh/ddsp-chowning-clarinet/datasets/tfrecords/train.tfrecord \
+           --num_shards=128 \
+           --alsologtostderr \
+           --allow_memory_growth
+    </pre>
+    The default arguments of the script are:
+    <pre>
+    def prepare_tfrecord(
+        input_audio_paths,
+        output_tfrecord_path,
+        num_shards=None,
+        sample_rate=16000,
+        frame_rate=250,
+        window_secs=4,
+        hop_secs=1,
+        pipeline_options=''):
+      """Prepares a TFRecord for use in training, evaluation, and prediction.
+    
+      Args:
+        input_audio_paths: An iterable of paths to audio files to include in
+          TFRecord.
+        output_tfrecord_path: The prefix path to the output TFRecord. Shard numbers
+          will be added to actual path(s).
+        num_shards: The number of shards to use for the TFRecord. If None, this
+          number will be determined automatically.
+        sample_rate: The sample rate to use for the audio.
+        frame_rate: The frame rate to use for f0 and loudness features.
+          If set to None, these features will not be computed.
+        window_secs: The size of the sliding window (in seconds) to use to
+          split the audio and features. If 0, they will not be split.
+        hop_secs: The number of seconds to hop when computing the sliding
+          windows.
+        pipeline_options: An iterable of command line arguments to be used as
+          options for the Beam Pipeline.
+    </pre>
+    The default parameters for splitting the input audio are 4 seconds with 1 second overlap - this is similar to the other training data preparation for SampleRNN and WaveNet. The interesting part is the <code>frame_rate</code> for evaluating the f0 and loudness features. These are used in the <code>ddsp/spectral_ops.py</code> script. These define the frame size that the inputs are chunked into for the feature analysis.
+    <br>
+    <br>
+    The dataset directory after the tfrecord preparation looks like this:
+    <pre>
+    sevagh:ddsp-chowning-clarinet $ tree datasets/
+    datasets/
+    ├── 248349__mtg__clarinet-d3.wav
+    ├── 248350__mtg__clarinet-d-3.wav
+    ├── 248351__mtg__clarinet-e3.wav
+    ├── 248352__mtg__clarinet-f3.wav
+    ├── 248353__mtg__clarinet-f-3.wav
+    ...
+    ├── 356922__mtg__clarinet-gsharp3.wav
+    ├── 356926__mtg__clarinet-e6.wav
+    ├── 356930__mtg__clarinet-d4.wav
+    └── tfrecords
+        ├── train.tfrecord-00000-of-00128
+        ├── train.tfrecord-00001-of-00128
+	...
+        ├── train.tfrecord-00126-of-00128
+        └── train.tfrecord-00127-of-00128
+    
+    1 directory, 558 files
+    sevagh:ddsp-chowning-clarinet $
+    </pre>
+    I chose 128 shards because the default 10 creates single tfrecord files which are too large for my GPU vmem and crash.
+    <h3>Training and evaluation</h3>
+    The training command is:
+    <pre>
+    python -m ddsp.training.ddsp_run \
+      --mode=train \
+      --alsologtostderr \
+      --save_dir="/home/sevagh/ddsp-chowning-clarinet/clarinet-autoencoder-training/" \
+      --gin_file=ddsp/training/gin/models/solo_instrument.gin \
+      --gin_file=ddsp/training/gin/datasets/tfrecord.gin \
+      --gin_param="TFRecordProvider.file_pattern='/home/sevagh/ddsp-chowning-clarinet/datasets/tfrecords/train.tfrecord*'" \
+      --gin_param="batch_size=16" \
+      --gin_param="train_util.train.num_steps=100000" \
+      --allow_memory_growth
+    </pre>
+    The logs to stdout contain some information about the number of trainable parameters in the model:
+    <pre>
+    Model: "autoencoder"
+    _________________________________________________________________
+    Layer (type)                 Output Shape              Param #
+    =================================================================
+    rnn_fc_decoder (RnnFcDecoder multiple                  4801150
+    _________________________________________________________________
+    processor_group (ProcessorGr multiple                  48000
+    _________________________________________________________________
+    spectral_loss (SpectralLoss) multiple                  0
+    =================================================================
+    Total params: 4,849,150
+    Trainable params: 4,849,150
+    Non-trainable params: 0
+    _________________________________________________________________
+    I1101 15:27:16.081737 140384532342592 trainers.py:83] Restoring from checkpoint...
+    I1101 15:27:16.081849 140384532342592 trainers.py:91] Trainer restoring the full model
+    I1101 15:27:16.082196 140384532342592 trainers.py:116] No checkpoint, skipping.
+    
+    
+    
+    I1101 15:27:24.388114 140384532342592 train_util.py:213] Creating metrics for ['spectral_loss', 'total_loss']
+    I1101 15:27:24.414017 140384532342592 train_util.py:225] step: 1        spectral_loss: 20.44    total_loss: 20.44
+    I1101 15:27:24.987877 140384532342592 train_util.py:225] step: 2        spectral_loss: 16.93    total_loss: 16.93
+    I1101 15:27:25.565799 140384532342592 train_util.py:225] step: 3        spectral_loss: 15.23    total_loss: 15.23
+    </pre>
+    Although I set it to train for 100,000 steps, I stopped the training after 2 hours (total loss reached ~4.0). The results aren't wav files like other models we saw, but summaries that must be loaded in a web UI called Tensorboard<sup><a href="#ref">[6]</a></sup>.
+    <br>
+    <br>
+    The evaluation and sampling are run as follows:
+    <pre>
+    # evaluate
+    python -m ddsp.training.ddsp_run \
+      --mode=eval \
+      --alsologtostderr \
+      --save_dir="/home/sevagh/ddsp-chowning-clarinet/clarinet-autoencoder-training/" \
+      --gin_file=ddsp/training/gin/datasets/tfrecord.gin \
+      --gin_file=ddsp/training/gin/eval/basic_f0_ld.gin \
+      --gin_param="TFRecordProvider.file_pattern='/home/sevagh/ddsp-chowning-clarinet/datasets/tfrecords/train.tfrecord*'" \
+      --allow_memory_growth
+    
+    # sample
+    python -m ddsp.training.ddsp_run \
+      --mode=sample \
+      --alsologtostderr \
+      --save_dir="/home/sevagh/ddsp-chowning-clarinet/clarinet-autoencoder-training/" \
+      --gin_file=ddsp/training/gin/datasets/tfrecord.gin \
+      --gin_file=ddsp/training/gin/eval/basic_f0_ld.gin \
+      --gin_file="/home/sevagh/ddsp-chowning-clarinet/clarinet-autoencoder-training/operative_config-0.gin" \
+      --gin_param="TFRecordProvider.file_pattern='/home/sevagh/ddsp-chowning-clarinet/datasets/tfrecords/train.tfrecord*'" \
+      --allow_memory_growth
+    </pre>
+    The key fine is the <code>operative_config-0.gin</code>, which is automatically generated by the training step.
+    <br>
+    <br>
+    Then you must run tensorboard locally and visit localhost:8000 on your web browser:
+    <pre>
+    (ddsp) sevagh:ddsp-chowning-clarinet $ tensorboard --logdir=/home/sevagh/ddsp-chowning-clarinet/clarinet-autoencoder-training -
+    -port=8080
+    2020-11-01 11:52:19.461856: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+    Serving TensorBoard on localhost; to expose to the network, use a proxy or pass --bind_all
+    TensorBoard 2.3.0 at http://localhost:8080/ (Press CTRL+C to quit)
+    </pre>
+    These contain images with loss, spectrograms, waveforms, and other images, as well as audio clips. For instance, after the 2 hours of training, these were the spectral and waveform results of the synthesis compared to the input training clips:
+    <img src="ddsp_singleinstrument_tensorboard1.png" width=700px>
+    <br>
+    <img src="ddsp_singleinstrument_tensorboard2.png" width=700px>
+    <br>
+
+    The generated audio clips downloaded from tensorboard have some decent clarinet sounds:
+    <br>
+    <audio controls>
+            <source src="ddsp_singleinstrument_clarinet1.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+<audio controls>
+            <source src="ddsp_singleinstrument_clarinet2.wav" type="audio/wav"</source>
+    </audio>
+    <h2>Building the Chowning clarinet model</h2>
+
+    <h1 id="ref">References</h2>
+    <ol>
+      <li><i>Computer Music</i> by Dodge & Jerse, pp. 125-127</li>
+      <li><a href="https://github.com/magenta/ddsp">magenta/ddsp - GitHub</a></li>
+      <li><a href="https://github.com/sevagh/ddsp">sevagh/ddsp - GitHub fork</a></li>
+      <li><a href="https://github.com/google/gin-config">google/gin - Gin provides a lightweight configuration framework for Python - GitHub</a></li>
+      <li><a href="https://github.com/magenta/ddsp#processorgroup-with-gin">ProcessorGroup (with gin) - ddsp README</a></li>
+      <li><a href="https://freesound.org/people/MTG/packs/20228/">Freesound pack: Clarinet single notes by MTG</a></li>
+      <li><a href="https://www.tensorflow.org/tensorboard">TensorBoard | TensorFlow</a></li>
+    </ol>
+  </body>
+</html>
+
