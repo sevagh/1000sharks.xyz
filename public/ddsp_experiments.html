@@ -17,6 +17,68 @@
     <br>
     <br>
     DDSP's selling point is that it provides familiar DSP elements in a differentiable (aka machine learnable) platform. I chose to work with the clarinet in my DDSP experiments.
+    <h2>Preliminary - using the DDSP additive synthesizer</h2>
+    I extracted the DDSP additive synthesizer into a script, <code>synth_demo.py</code>, to verify that it can behave like a normal non-neural synthesizer:
+    <pre>
+    # Ignore a bunch of deprecation warnings
+    import warnings
+    warnings.filterwarnings("ignore")
+    
+    import ddsp
+    import ddsp.training
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import tensorflow as tf
+    import tensorflow_datasets as tfds
+    import soundfile
+    import matplotlib.pyplot as plt
+    import numpy
+    
+    
+    sample_rate = 16000 #DEFAULT_SAMPLE_RATE  # 16000
+    n_frames = 1000
+    hop_size = 64
+    n_samples = n_frames * hop_size
+    
+    # Amplitude [batch, n_frames, 1].
+    # Make amplitude linearly decay over time.
+    amps = np.linspace(1.0, -3.0, n_frames)
+    amps = amps[np.newaxis, :, np.newaxis]
+    
+    # Harmonic Distribution [batch, n_frames, n_harmonics].
+    # Make harmonics decrease linearly with frequency.
+    n_harmonics = 20
+    harmonic_distribution = np.ones([n_frames, 1]) * np.linspace(1.0, -1.0, n_harmonics)[np.newaxis, :]
+    harmonic_distribution = harmonic_distribution[np.newaxis, :, :]
+    
+    # Fundamental frequency in Hz [batch, n_frames, 1].
+    f0_hz = 440.0 * np.ones([1, n_frames, 1])
+    
+    # Create synthesizer object.
+    additive_synth = ddsp.synths.Additive(n_samples=n_samples,
+                                          scale_fn=ddsp.core.exp_sigmoid,
+                                          sample_rate=sample_rate)
+    
+    # Generate some audio.
+    audio = additive_synth(amps, harmonic_distribution, f0_hz)
+    
+    a = audio.numpy()[0] # get numpy array from the tensor expression
+    
+    try:
+        soundfile.write('synth_demo_py.wav', a, sample_rate)
+    except:
+        pass
+    
+    _, _, _, im = plt.specgram(a, Fs=sample_rate, NFFT=1024, noverlap=256)
+    plt.show()
+    </pre>
+    This created the following audio clip and spectrogram:
+<br>
+    <audio controls>
+            <source src="ddsp_synth_demo.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <img src="./ddsp_synth_demo.png" width=600px>
     <h2>Training the DDSP single instrument autoencoder</h2>
     Following the same procedure as other experiments, I forked the original code<sup><a href="#ref">[1]</a></sup> into my own GitHub account<sup><a href="#ref">[2]</a></sup> so I could modify code as needed for my experiments in this project.
     <br>
