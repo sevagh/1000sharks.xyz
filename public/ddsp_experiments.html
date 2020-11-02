@@ -16,11 +16,7 @@
     The basic instrument synthesis model in the DDSP paper, which I showed in the <a href="./hybrid.html">DDSP overview</a> page, is the single instrument autoencoder, which used additive sinewave synthesis + filtered noise to synthesize violin sounds. The training data is first encoded into a set of features including f0 and loudness, and their primary example is based on the violin.
     <br>
     <br>
-    DDSP's selling point is that it provides familiar DSP elements in a differentiable (aka machine learnable) platform. As such, I chose to work with the clarinet in my DDSP experiments, since I will attempt to create a differentiable version of the Chowning clarinet model (which is a straightforward model).
-    <h2>Chowning clarinet model</h2>
-    Chowning clarinet FM synthesis model<sup><a href="#ref">[1]</a></sup>:
-    <img src="./chowning_clarinet.png" width=600px>
-    <h3>C++ Stk implementation + samples</h3>
+    DDSP's selling point is that it provides familiar DSP elements in a differentiable (aka machine learnable) platform. I chose to work with the clarinet in my DDSP experiments.
     <h2>Training the DDSP single instrument autoencoder</h2>
     Following the same procedure as other experiments, I forked the original code<sup><a href="#ref">[1]</a></sup> into my own GitHub account<sup><a href="#ref">[2]</a></sup> so I could modify code as needed for my experiments in this project.
     <br>
@@ -293,11 +289,164 @@
 <audio controls>
             <source src="ddsp_singleinstrument_clarinet2.wav" type="audio/wav"</source>
     </audio>
-    <h2>Building the Chowning clarinet model</h2>
+    <h2>Exploring the single_intrument.gin model</h2>
+    We looked at WaveNet and SampleRNN through the following lens:
+    <ul>
+      <li>Input data</li>
+      <li>Training network</li>
+      <li>Loss function</li>
+      <li>Generation/sampling - how is audio generated</li>
+    </ul>
+    The input waveforms are converted into frame-wise fundamental frequency (i.e. f0) and loudness features. We can see this in the file <code>ddsp/training/gin/models/solo_instrument.gin</code>, in the Decoder:
+    <pre>
+    # Decoder
+    Autoencoder.decoder = @decoders.RnnFcDecoder()
+    RnnFcDecoder.rnn_channels = 512
+    RnnFcDecoder.rnn_type = 'gru'
+    RnnFcDecoder.ch = 512
+    RnnFcDecoder.layers_per_stack = 3
+    RnnFcDecoder.input_keys = ('ld_scaled', 'f0_scaled')
+    RnnFcDecoder.output_splits = (('amps', 1),
+                                  ('harmonic_distribution', 60),
+                                  ('noise_magnitudes', 65))
+    </pre>
+    The class <code>RnnFcDecoder</code> uses recursive and fully-connected neural network layers to convert the input features of loudness and f0 into a learned output of amplitudes, harmonic distribution, and noise magnitudes which are then used as inputs to the additive and filtered noise synthesis groups:
+    <pre>
+    ProcessorGroup.dag = [
+      (@synths.Additive(),
+        ['amps', 'harmonic_distribution', 'f0_hz']),
+      (@synths.FilteredNoise(),
+        ['noise_magnitudes']),
+      (@processors.Add(),
+        ['filtered_noise/signal', 'additive/signal']),
+    ]
+    </pre>
+    Note that <code>single_instrument.gin</code> inherits from the base autoencoder mode <code>ae.gin</code>. In ae.gin we can find the loss function:
+    <pre>
+    # Losses
+    Autoencoder.losses = [
+        @losses.SpectralLoss(),
+	]
+	SpectralLoss.loss_type = 'L1'
+	SpectralLoss.mag_weight = 1.0
+	SpectralLoss.logmag_weight = 1.0
+    </pre>
+    This class is defined in <code>ddsp/training/losses.py</code>:
+    <pre>
+    class SpectralLoss(Loss):
+      """Multi-scale spectrogram loss.
+    
+      This loss is the bread-and-butter of comparing two audio signals. It offers
+      a range of options to compare spectrograms, many of which are redunant, but
+      emphasize different aspects of the signal. By far, the most common comparisons
+      are magnitudes (mag_weight) and log magnitudes (logmag_weight).
+      """
+    
+      def __init__(self,
+                   fft_sizes=(2048, 1024, 512, 256, 128, 64),
+                   loss_type='L1',
+                   mag_weight=1.0,
+                   delta_time_weight=0.0,
+                   delta_freq_weight=0.0,
+                   cumsum_freq_weight=0.0,
+                   logmag_weight=0.0,
+                   loudness_weight=0.0,
+                   name='spectral_loss'):
+        """Constructor, set loss weights of various components.
+    
+        Args:
+          fft_sizes: Compare spectrograms at each of this list of fft sizes. Each
+            spectrogram has a time-frequency resolution trade-off based on fft size,
+            so comparing multiple scales allows multiple resolutions.
+          loss_type: One of 'L1', 'L2', or 'COSINE'.
+          mag_weight: Weight to compare linear magnitudes of spectrograms. Core
+            audio similarity loss. More sensitive to peak magnitudes than log
+            magnitudes.
+          delta_time_weight: Weight to compare the first finite difference of
+            spectrograms in time. Emphasizes changes of magnitude in time, such as
+            at transients.
+          delta_freq_weight: Weight to compare the first finite difference of
+            spectrograms in frequency. Emphasizes changes of magnitude in frequency,
+            such as at the boundaries of a stack of harmonics.
+          cumsum_freq_weight: Weight to compare the cumulative sum of spectrograms
+            across frequency for each slice in time. Similar to a 1-D Wasserstein
+            loss, this hopefully provides a non-vanishing gradient to push two
+            non-overlapping sinusoids towards eachother.
+          logmag_weight: Weight to compare log magnitudes of spectrograms. Core
+            audio similarity loss. More sensitive to quiet magnitudes than linear
+            magnitudes.
+          loudness_weight: Weight to compare the overall perceptual loudness of two
+            signals. Very high-level loss signal that is a subset of mag and
+            logmag losses.
+          name: Name of the module.
+        """
+    </pre>
+    Note that losses are computed for spectrograms with a range of hops for varying time-frequency resolution for better results, rather than choosing one.
+    <br>
+    <br>
+    We can find the training and sampling code defined in <code>ddsp/training/ddsp_run.py</code>:
+    <pre>
+    # Training.
+    if FLAGS.mode == 'train':
+      strategy = train_util.get_strategy(tpu=FLAGS.tpu,
+                                         cluster_config=FLAGS.cluster_config)
+      with strategy.scope():
+        model = models.get_model()
+        trainer = trainers.Trainer(model, strategy)
+
+      train_util.train(data_provider=gin.REQUIRED,
+                       trainer=trainer,
+                       save_dir=save_dir,
+                       restore_dir=restore_dir,
+                       early_stop_loss_value=FLAGS.early_stop_loss_value,
+                       report_loss_to_hypertune=FLAGS.hypertune)
+    </pre>
+    Note that there is the early stop loss, a useful feature to stop training when its no longer useful. Sampling:
+    <pre>
+    # Sampling.
+    elif FLAGS.mode == 'sample':
+      model = models.get_model()
+      delay_start()
+      eval_util.sample(data_provider=gin.REQUIRED,
+                       model=model,
+                       save_dir=save_dir,
+                       restore_dir=restore_dir,
+                       run_once=FLAGS.run_once)
+    </pre>
+    In <code>ddsp/training/eval_util.py</code> we can see the model is used to generate audio:
+    <pre>
+    outputs, losses = model(batch, return_losses=True, training=True)
+    outputs['audio_gen'] = model.get_audio_from_outputs(outputs)
+    for evaluator in evaluators:
+      if mode == 'eval':
+        evaluator.evaluate(batch, outputs, losses)
+      if mode == 'sample':
+        evaluator.sample(batch, outputs, step)
+    </pre>
+    The evaluator for the solo instrument model is the <code>F0LdEvaluator</code>, which is a class in <code>ddsp/training/evaluators.py</code> that contains the logic for generating samples from the trained model:
+    <pre>
+    class F0LdEvaluator(BaseEvaluator):
+      """Computes F0 and loudness metrics."""
+       
+      def evaluate(self, batch, outputs, losses):
+        del losses  # Unused.
+        audio_gen = outputs['audio_gen']
+        self._loudness_metrics.update_state(batch, audio_gen)
+    
+        if 'f0_hz' in outputs and 'f0_hz' in batch:
+          self._f0_metrics.update_state(batch, outputs['f0_hz'])
+        elif self._run_f0_crepe:
+          self._f0_crepe_metrics.update_state(batch, audio_gen)
+    
+      def sample(self, batch, outputs, step):
+        if 'f0_hz' in outputs and 'f0_hz' in batch:
+          summaries.f0_summary(batch['f0_hz'], outputs['f0_hz'], step,
+                               name='f0_harmonic')
+    </pre>
+    This is where the comparison images (e.g. spectrograms, waveforms) between the training and synthesized audio are generated and stored in Tensorboard.
 
     <h1 id="ref">References</h2>
     <ol>
-      <li><i>Computer Music</i> by Dodge & Jerse, pp. 125-127</li>
       <li><a href="https://github.com/magenta/ddsp">magenta/ddsp - GitHub</a></li>
       <li><a href="https://github.com/sevagh/ddsp">sevagh/ddsp - GitHub fork</a></li>
       <li><a href="https://github.com/google/gin-config">google/gin - Gin provides a lightweight configuration framework for Python - GitHub</a></li>
