@@ -161,7 +161,7 @@ we apply a DCT on the log spectrum, which results in 22 Bark-frequency cepstral 
     There is a matrix created which is then ingested by the <code>rnn_train.py</code> script to load the features of signal and noise for training the neural layers.
     <br>
     <br>
-    It's unclear how to load more than one file, but other users on GitHub mentioned concatenating all of their signal and all of their noise clips into two giant raw files to genrate
+    It's unclear how to load more than one file, but other users on GitHub mentioned concatenating all of their signal and all of their noise clips into two giant raw files.
     <h3>Generated C code with learned coefficients</h3>
     The step after training is to use the script <code>training/dump_rnn.py</code> to dump the learned coefficients into C source and header files for the final RNNoise library, in <code>src/rnn_data.c</code>:
     <pre>

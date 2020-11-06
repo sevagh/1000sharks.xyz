@@ -363,7 +363,6 @@
     <pre>
 $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks/ --num_epochs 100 --batch_size 64 --sample_rate 16000
     </pre>
-    
     <h3>Periphery only results</h3>
     Here's a 30-second clip output from the training on Periphery only:
     <br>
@@ -506,8 +505,8 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
         └── train
     </pre>
 
-    <h1>Repeating experiment 1 with 2-tier architecture</h1>
-    I repeated Experiment 1, training on a single album (Animals as Leaders' self-titled album), but after modifying the prism-samplernn code to support the 2-tier architecture (which as discussed in the overview is purported to produce better music).
+    <h1>Repeating experiment 0 with 2-tier architecture</h1>
+    I repeated Experiment 0, training on a single album (Animals as Leaders' self-titled album), but after modifying the prism-samplernn code to support the 2-tier architecture (which as discussed in the overview is purported to produce better music).
     <br>
     <br>
     The parameter `frame_sizes = [16,64]` determines the additional 2 tiers, frame and big frame (in addition to the base sample tier) - in 2-tier SampleRNN, there is no big frame. I modified my fork of prism-samplernn to accept `frame_size = [16]` as a configuration for 2-tier. The code changes can be viewed <a href="https://github.com/rncm-prism/prism-samplernn/compare/master...sevagh:master">here</a>. The exact steps of experiment 0 were repeated.

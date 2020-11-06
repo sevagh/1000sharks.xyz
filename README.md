@@ -11,7 +11,6 @@ It uses SampleRNN for music generation, and StyleGAN2 for album art generation.
 ```
 $ tree -L 1
 .
-├── chowning-clarinet-cpp # reference C++/Stk implementation of Chowning clarinet
 ├── ddsp-scripts          # scripts for reproducing DDSP results
 ├── LICENSE               # MIT license
 ├── paper-presentation    # latex files for presentation on neural audio synthesis
