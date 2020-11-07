@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="GitLab Pages">
+    <title>1000 sharks - an AI music experience</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body id="index">
+    <div class="navbar">
+      <a href="./mumt618_report.html">MUMT 618 report</a>
+      <a href="./">1000sharks demo</a>
+    </div>
+
+    <h1>Bridging the gap between SampleRNN implementations</h1>
+    The "music" resulting from the default parameters of the prism-samplernn implementation led to (subjectively) bad results when trained on the Animals as Leaders self-titled album.
+    <br>
+    <br>
+    My main judgement criteria is how similar the generated audio sounds to the original music:
+    <iframe width="300" height="256" src="https://www.youtube.com/embed/SZ2WrN93vno" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    Result (from <a href="./prism_samplernn.html">the prism samplernn experiment page</a>):
+    <br>
+    <audio controls>
+	    <source src="aamgen_0.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    I'll use the same album as a training input to dadabots SampleRNN to ensure that it's not the fault of the training input (that is somehow unlearnable). Then, I'll apply various tweaks to the prism SampleRNN implementation to see how much we can improve the music generation.
+    <br>
+    <br>
+    This is valuable because, as previously mentioned, the prism-samplernn codebase<sup><a href="#ref">[1],[2]</a></sup> is more modern, faster, performant, uses Python 3 (as opposed to 2) and also uses the most up-to-date TensorFlow 2 library as compared to the dadabots<sup><a href="#ref">[3],[4]</a></sup> and reference<sup><a href="#ref">[5]</a></sup> implementations. It also incorporates fast audio generation (while the reference SampleRNN implementation doesn't include an audio generation script at all, and the dadabots generation is very slow).
+    <h2>Repeating experiment 0 with dadabots SampleRNN</h2>
+    I followed the same procedure as the <a href="./dadabots_samplernn.html">dadabots SampleRNN experiment</a> on Cannibal Corpse music. The training ran for ~200,000 steps (a little over), which amounted to <b>44 hours</b>.
+    <br>
+    <br>
+    The preprocessing, training, and generation commands were all the same as the Cannibal Corpse experiment - 6400 overlapping flac files created from the 16kHz mono entire album wav file:
+    <pre>
+    # preprocess
+    $ cp aam_mono_16khz.wav datasets/music/downloads/
+    $ cd datasets/music && python new_experiment16k.py aam downloads/
+    $ ls ./aam/parts/*.flac | wc -l
+    6400
+
+    # train
+    $ python -u models/two_tier/two_tier16k.py --exp aam --n_frames 64 --frame_size 16 --emb_size 256 --skip_conn True --dim 1024 --n_rnn 5 --rnn_type LSTM --q_levels 256 --q_type mu-law --batch_size 32 --weight_norm True --learn_h0 False --which_set aam --resume
+
+    # generate
+    $ python -u models/two_tier/two_tier_generate16k.py --exp aam --n_frames 64 --frame_size 16 --emb_size 256 --skip_conn True --dim 1024 --n_rnn 5 --rnn_type LSTM --q_levels 256 --q_type mu-law --batch_size 32 --weight_norm True --learn_h0 False --which_set aam --n_secs 20 --n_seqs 200 --temp 0.95
+
+    # generation results
+    $ ls results_2t/models-two_tier-two_tier16k.py-expaam-n_frames64-frame_size16-emb_size256-skip_connT-dim1024-n_rnn5-rnn_typeLSTM-q_levels256-q_typemu-law-batch_size32-weight_normT-learn_h0F-which_setaam-lr0.001/samples/
+    sample_e9_i200000_20_11:36:27_0.wav    sample_e9_i200000_20_11:36:27_130.wav  sample_e9_i200000_20_11:36:27_22.wav  sample_e9_i200000_20_11:36:27_53.wav  sample_e9_i200000_20_11:36:27_84.wav   sample_e9_i200000_20_11:36:28_170.wav
+    ...
+    </pre>
+    Example of 2 overlapping training clips:
+    <br>
+    <audio controls>
+	    <source src="aam_train_0.flac" type="audio/wav"</source>
+    </audio>
+    <br>
+    <audio controls>
+	    <source src="aam_train_1.flac" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    Just like with the Cannibal Corpse experiment, the resulting generated clips sound similar to the training music (although unstructured and cacophonous):
+    <br>
+    <audio controls>
+	    <source src="aam_dadabots_gen_0.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <audio controls>
+	    <source src="aam_dadabots_gen_1.wav" type="audio/wav"</source>
+    </audio>
+
+    <h2>Repeating experiment 0 with PRiSM + 2-tier architecture</h2>
+    I repeated Experiment 0, training on a single album (Animals as Leaders' self-titled album), but after modifying the prism-samplernn code to support the 2-tier architecture (which as discussed in the overview is purported to produce better music).
+    <br>
+    <br>
+    The parameter `frame_sizes = [16,64]` determines the additional 2 tiers, frame and big frame (in addition to the base sample tier) - in 2-tier SampleRNN, there is no big frame. I modified my fork of prism-samplernn to accept `frame_size = [16]` as a configuration for 2-tier. The code changes can be viewed <a href="https://github.com/rncm-prism/prism-samplernn/compare/master...sevagh:master">here</a>. The exact steps of experiment 0 were repeated.
+    <br>
+    <br>
+    Train and generate:
+    <pre>
+    $ python train.py --id aamgen-2t --data_dir ./chunks/ --num_epochs 100 --batch_size 64 --checkpoint_every 5 --output_file_dur 3 --sample_rate 16000 --resume=True
+    Epoch: 98/100, Step: 735/750, Loss: 3.078, Accuracy: 21.368, (0.391 sec/step)
+    Epoch: 98/100, Step: 736/750, Loss: 3.077, Accuracy: 21.386, (0.391 sec/step)
+    Epoch: 98/100, Step: 737/750, Loss: 3.076, Accuracy: 21.406, (0.385 sec/step)
+    Epoch: 98/100, Step: 738/750, Loss: 3.075, Accuracy: 21.428, (0.394 sec/step)
+    Epoch: 98/100, Step: 739/750, Loss: 3.074, Accuracy: 21.451, (0.388 sec/step)
+    Epoch: 98/100, Step: 740/750, Loss: 3.073, Accuracy: 21.475, (0.390 sec/step)
+    Epoch: 98/100, Step: 741/750, Loss: 3.072, Accuracy: 21.501, (0.400 sec/step)
+    Epoch: 98/100, Step: 742/750, Loss: 3.071, Accuracy: 21.529, (0.389 sec/step)
+    Epoch: 98/100, Step: 743/750, Loss: 3.069, Accuracy: 21.559, (0.394 sec/step)
+    Epoch: 98/100, Step: 744/750, Loss: 3.068, Accuracy: 21.590, (0.388 sec/step)
+    Epoch: 98/100, Step: 745/750, Loss: 3.066, Accuracy: 21.623, (0.386 sec/step)
+    Epoch: 98/100, Step: 746/750, Loss: 3.065, Accuracy: 21.656, (0.396 sec/step)
+    Epoch: 98/100, Step: 747/750, Loss: 3.063, Accuracy: 21.691, (0.389 sec/step)
+    Epoch: 98/100, Step: 748/750, Loss: 3.062, Accuracy: 21.726, (0.388 sec/step)
+    Epoch: 98/100, Step: 749/750, Loss: 3.060, Accuracy: 21.764, (0.392 sec/step)
+    $
+    $ python generate.py --output_path ./aamgen-2t.wav --checkpoint_path ./logdir/aamgen-2t/31.10.2020_17.33.41/model.ckpt-95 --config_file ./default.config.json --num_seqs 20 --dur 20 --sample_rate 16000
+    </pre>
+    Generated clips:<br>
+    <audio controls>
+	    <source src="aamgen_2t_0.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <audio controls>
+	    <source src="aamgen_2t_1.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <br>
+    The resultant clips exhibit the similar strange high-pitched whistling and erratic drum beats as some other bad PRiSM-SampleRNN results - no significant improvement. Although the code "works" (in that it doesn't crash and actually successfully trains and generates anything at all), I can't really say whether it "works" in the neural perspective, i.e. converges to a correct solution.
+
+    <h2>Repeating experiment 0 with PRiSM + 2-tier architecture + dadabots preprocessing + hyperparams</h2>
+    The next thing to compare are the other model hyperparameters. In the dadabots case, these are all specified via command-line, while the PRiSM implementation takes a json config file:
+    <pre>
+    # dadabots important params
+    --n_frames 64
+    --frame_size 16
+    --emb_size 256
+    --skip_conn True
+    --dim 1024
+    --n_rnn 5
+    --rnn_type LSTM
+    --q_levels 256
+    --q_type mu-law
+    --batch_size 32
+    --weight_norm True
+    --learn_h0 False 
+
+    # defaults vs. dadabots in PRiSM samplernn config
+    "seq_len": 1024,           
+    "frame_sizes": [16,64],
+      ->
+      "frame_sizes": [16],     # 2-tier like dadabots
+    "dim": 1024,               # already same as dadabots
+    "rnn_type": "gru",
+      ->
+      "rnn_type": "lstm",      # dadabots
+    "num_rnn_layers": 4,
+      ->
+      "num_rnn_layers": 5,     # dadabots
+    "q_type": "mu-law",
+    "q_levels": 256,
+    "emb_size": 256
+    </pre>
+    Another difference is I copied the dadabots preprocessing (6400 overlapping clips, as opposed to the default which splits albums into 8-second chunks with 1-second overlap, resulting in 443 clips):
+    <pre>
+    # copy dadabots samplernn preprocessed clips, convert flac to wav
+    $ find . -name "*.flac" -exec bash -c 'ffmpeg -i "{}" -ac 1 -ar 16000 "${0/.flac}.wav"' {} \;
+
+    # train
+    $ python train.py --id aamgen-2t-dadabots-preprocessing --data_dir ~/repos/dadabots_SampleRNN/datasets/music/aam/parts/ --num_epochs 100 --batch_size 64 --checkpoint_every 5 --output_file_dur 3 --sample_rate 16000 --resume=True
+
+    # generate
+    $ python generate.py --output_path ./aamgen-2t-dadabots/aamgen.wav --checkpoint_path ./logdir/aamgen-2t-dadabots-preprocessing/04.11.2020_12.29.42/model.ckpt-25 --config_file ./default.config.json --num_seqs 20 --dur 20 --sample_rate 16000
+    </pre>
+    Let this run for 25 epochs (due to the highly increased number of training clips, this resulted in much longer training per epoch), or <b>44 hours</b> (exactly same time as the dadabots training, to do a fair comparison).
+    <br>
+    <br>
+    Results:
+    <br>
+    <audio controls>
+	    <source src="aamgen_prism2t_dadabots_pre_0.wav" type="audio/wav"</source>
+    </audio>
+    <br>
+    <audio controls>
+	    <source src="aamgen_prism2t_dadabots_pre_1.wav" type="audio/wav"</source>
+    </audio>
+
+    <h1>Mini-conclusion</h1>
+    Implementing 2-tier SampleRNN + the dadabots preprocessing and hyperparameters definitely improved the results of the prism-samplernn codebase in generating progressive metal music.
+
+    <h1 id="ref">References</h1>
+    <ol>
+      <li><a href="https://github.com/rncm-prism/prism-samplernn">rncm-prism/prism-samplernn - GitHub</a></li>
+      <li><a href="https://github.com/sevagh/prism-samplernn">rncm-prism/prism-samplernn - my fork on GitHub</a></li>
+      <li><a href="https://github.com/Cortexelus/dadabots_sampleRNN">dadabots_sampleRNN - GitHub</a></li>
+      <li><a href="https://github.com/sevagh/dadabots_sampleRNN">dadabots_sampleRNN - my fork on GitHub</a></li>
+      <li><a href="https://github.com/soroushmehr/sampleRNN_ICLR2017">sampleRNN_ICLR2017 - GitHub, reference implementation</a></li>
+    </ol>
+  </body>
+</html>
+

@@ -52,28 +52,28 @@ the conditional probability distribution is modelled by a stack of convolutional
     <blockquote>
     From a scientific standpoint, using deep CNNs as a black box for audio and speech processing is deeply unsatisfactory.  Without a clear understanding of how and why CNNs can learn from raw audio waveforms, the development of better models, i.e., the design of the network architecture and the determination of hyper-parameters, is reduced to trial-and-error. In fact, the network architecture and hyper-parameter settings of existing approaches are similar to those of computer vision models.
     </blockquote>
-    As a counterpoint, this paper discusses the success of 1D Convolutional neural networks for 1D signals (not necessarily audio waveforms): https://arxiv.org/pdf/1905.03554.pdf, but without any simple intuition visual/graphic aids.
+    As a counterpoint, another paper<sup><a href="#ref">[5]</a></sup> discusses the success of 1D Convolutional neural networks for 1D signals (not necessarily audio waveforms), but without any simple intuition visual/graphic aids.
     <h4>Image CNN intuitions</h4>
-    Let's look at an animation of how an image convolution extracts features<sup><a href="#ref">[5]</a></sup>:
+    Let's look at an animation of how an image convolution extracts features<sup><a href="#ref">[6]</a></sup>:
     <br>
     <img src="wavenet_convolution_overview.gif" width="600px"/>
     <br>
-    Here's a visualization of successive convolution layers applied to a cat picture<sup><a href="#ref">[6]</a></sup>:
+    Here's a visualization of successive convolution layers applied to a cat picture<sup><a href="#ref">[7]</a></sup>:
     <br>
     <img src="wavenet_convolution_image.png" width="800px"/>
-    The image of the cat gets more "abstract" as the convolutions get deeper, as broader and higher level features are extracted. This fits into a larger, typical architecture of an image CNN model<sup><a href="#ref">[5]</a></sup>:
+    The image of the cat gets more "abstract" as the convolutions get deeper, as broader and higher level features are extracted. This fits into a larger, typical architecture of an image CNN model<sup><a href="#ref">[6]</a></sup>:
     <br>
     <img src="wavenet_cnn_architecture.png" width="800px"/>
     <br>
     <br>
     According to the intuition of WaveNet (and SampleRNN), there should be a music analog to this multi-level feature extraction.
     <h4>Audio waveform convolutions and feature maps</h4>
-    The above visualizations have their equivalent in some papers on 1D convolutions on audio waveforms<sup><a href="#ref">[7],[8]</a></sup>:
+    The above visualizations have their equivalent in some papers on 1D convolutions on audio waveforms<sup><a href="#ref">[8],[9]</a></sup>:
     <br>
     <img src="wavenet_1dconv_architecture.png" width="500px"/>
     <br>
     <img src="wavenet_1dconv_architecture2.png" width="800px"/>
-    In another paper<sup><a href="#ref">[9]</a></sup>, a spectral visualization of the audio waveform after applying simple 1x2,3 1D convolution filters (WaveNet uses 1x2) in a simplified model called SampleCNN shows a similar "broad feature extraction" as the cat picture above:
+    In another paper<sup><a href="#ref">[10]</a></sup>, a spectral visualization of the audio waveform after applying simple 1x2,3 1D convolution filters (WaveNet uses 1x2) in a simplified model called SampleCNN shows a similar "broad feature extraction" as the cat picture above:
     <br>
     <img src="wavenet_1dconv_features.png" width="800px"/>
     <br>
@@ -85,7 +85,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     I think there's enough shown above to accept the premise that 2D CNNs on images and 1D CNNs on audio are useful for the same underlying reason, that they both represent real world sequential waveforms, where the individual pixels/samples in close near each other are related either spatially or temporally.
 
     <h3>Receptive field and dilated convolutions</h3>
-    This WaveNet analysis<sup><a href="#ref">[10]</a></sup> has good descriptions and visual aids of the use of dilated convolutions. In a convolutional neural network, the receptive field can be seen as the region of interest on the input that are considered by the convolutional filter for the outputs.
+    This WaveNet analysis<sup><a href="#ref">[11]</a></sup> has good descriptions and visual aids of the use of dilated convolutions. In a convolutional neural network, the receptive field can be seen as the region of interest on the input that are considered by the convolutional filter for the outputs.
     <blockquote>
     What are dilated convolutions? A dilated convolution refers to a convolution with a filter that is dilated, where dilated means that the filter is enlarged by spacing out the weight values and padding them with zeroes in between. What is really happening, is that we are expanding the receptive field and increasing our coverage, we are looking at the relationship between neighbours that are a little bit more distant from each other. This is useful if some important features of our data are only definable in regions larger than what our receptive field covers.
     </blockquote>
@@ -137,7 +137,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     The default WaveNet settings in this implementation, therefore, produce a receptive field of 320ms (at a 16 kHz sample rate).
 
     <h3>Preprocessing</h3>
-    In WaveNet, the waveform amplitudes (a 1D array of floats, in their raw form) are mu-law encoded, and then one-hot encoded<sup><a href="#ref">[11]</a></sup>. The default value for mu-law quantization channels is 256. This is for computational efficiency - WaveNet only has to reason about 256 possible output values.
+    In WaveNet, the waveform amplitudes (a 1D array of floats, in their raw form) are mu-law encoded, and then one-hot encoded<sup><a href="#ref">[12]</a></sup>. The default value for mu-law quantization channels is 256. This is for computational efficiency - WaveNet only has to reason about 256 possible output values.
     <br>
     <br>
     I extracted out the preprocessing/encoding steps into a script to run them isolated from the larger network:
@@ -223,7 +223,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     <img src="wavenet_conv_layers.png" width=650px/>
     <br>
     <h4>Stack of dilated convolutions - details</h4>
-    The term "stack of dilated convolutions" is a very high-level description of WaveNet which ignores some implementation details. This article<sup><a href="#ref">[12]</sup></a> does a good job in describing the details of the stack, including describing the residual blocks and skip connections. 
+    The term "stack of dilated convolutions" is a very high-level description of WaveNet which ignores some implementation details. This article<sup><a href="#ref">[13]</sup></a> does a good job in describing the details of the stack, including describing the residual blocks and skip connections. 
     <blockquote>
     Residual block can be thought of as a building block for WaveNet . There are as many blocks as the number of dilation layers. For each residual block, the output of the previous block will be fed into the next one. By doing this, local features in low dilation layers are accumulated sequentially to capture dependency between the data points at distance.
     </blockquote>
@@ -280,7 +280,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     Note that the function <code>causal_conv</code> takes an argument of <code>dilation=1</code>, meaning undilated or consecutive samples.
     <br>
     <br>
-    The actual convolution is in the TensorFlow function <code>tf.nn.conv1d</code><sup><a href="#ref">[13]</a></sup>. The arguments are the input waveform (after the preprocessing), and a weights filter:
+    The actual convolution is in the TensorFlow function <code>tf.nn.conv1d</code><sup><a href="#ref">[14]</a></sup>. The arguments are the input waveform (after the preprocessing), and a weights filter:
     <pre>
     weights_filter = self.variables['causal_layer']['filter']
     tf.nn.conv1d(input_batch, weights_filter, stride=1, padding='VALID')
@@ -389,7 +389,7 @@ the conditional probability distribution is modelled by a stack of convolutional
     <br>
     <img src="wavenet_gated_activation_unit.png", width=800px/>
     <br>
-    This leads us back to the PixelCNN paper<sup><a href="#ref">[14]</a></sup> (recall that van der Oord, main author of WaveNet, also worked on PixelCNN):
+    This leads us back to the PixelCNN paper<sup><a href="#ref">[15]</a></sup> (recall that van der Oord, main author of WaveNet, also worked on PixelCNN):
     <br>
     <blockquote>
     Another potential advantage is that PixelRNNs contain multiplicative units (in the form of the LSTM gates), which may help it to model more complex interactions and non-linearity. To amend this we replaced the rectified linear units between the masked convolutions in the original pixelCNN with the following gated activation unit
@@ -404,20 +404,20 @@ the conditional probability distribution is modelled by a stack of convolutional
     <blockquote>
     Both residual (He et al., 2015) and parameterised skip connections are used throughout the network, to speed up convergence and enable training of much deeper models.
     </blockquote>
-    Here's a simpler description of skip connections<sup><a href="#ref">[15]</a></sup>:
+    Here's a simpler description of skip connections<sup><a href="#ref">[16]</a></sup>:
     <blockquote>
 Skip connections in deep architectures, as the name suggests, skip some layer in the neural network and feeds the output of one layer as the input to the next layers (instead of only the next one). 
     </blockquote>
-    This helps due to the vanishing gradient problem in deep neural networks<sup><a href="#ref">[16]</a>, <a href="#ref">[17]</a></sup>:
+    This helps due to the vanishing gradient problem in deep neural networks<sup><a href="#ref">[17],[18]</a></sup>:
     <blockquote>
 But training deep networks can be difficult because of the vanishing gradients problem. Vanishing gradients means that the gradients of the loss become more and more muted in the beginning layers of a network as the network become increasingly deeper
     </blockquote>
-    By using skip connections, this turns a deep network into an ensemble of relatively shallow networks (w.r.t the loss)<sup><a href="#ref">[18]</a></sup>. Or, in other words, skip connections allow the neural network to compute the quality of results not only based on the previous layer (which may be far removed from the input), but by skipping backwards to previous layers closer to the input.
+    By using skip connections, this turns a deep network into an ensemble of relatively shallow networks (w.r.t the loss)<sup><a href="#ref">[19]</a></sup>. Or, in other words, skip connections allow the neural network to compute the quality of results not only based on the previous layer (which may be far removed from the input), but by skipping backwards to previous layers closer to the input.
     <h3>Loss function</h3>
     During the training, there needs to be a step to verify the quality of the outputs against the input/training data and compute the loss/gradient. After learning parameters for this complex non-linear stack of dilated convolutions, what does WaveNet do with them?
     <br>
     <br>
-    First, let's describe the purpose of input batching. Input is batched for a training technique called Stochastic Gradient Descent, such that the training and updating of the model is done in small iterative steps against a batch. Traditionally, the gradient (or loss) of the model is computed across the entire corpus, such that the weights of the network are modified once per iteration. Conversely, mini-batch SGD allows the model to constantly update its weights on mini-batches of training data. This is more computationally efficient than computing a gradient on the entire dataset <sup><a href="#ref">[19]</a></sup>.
+    First, let's describe the purpose of input batching. Input is batched for a training technique called Stochastic Gradient Descent, such that the training and updating of the model is done in small iterative steps against a batch. Traditionally, the gradient (or loss) of the model is computed across the entire corpus, such that the weights of the network are modified once per iteration. Conversely, mini-batch SGD allows the model to constantly update its weights on mini-batches of training data. This is more computationally efficient than computing a gradient on the entire dataset <sup><a href="#ref">[20]</a></sup>.
     <br>
     <br>
     The code flows pretty nicely to create a generator (despite all the omitted parts) from the dilated convolution model shown previously:
@@ -454,7 +454,7 @@ But training deep networks can be difficult because of the vanishing gradients p
         [tf.shape(proba)[0] - 1, 0],
         [1, self.quantization_channels])
     </pre>
-    The softmax layer<sup><a href="#ref">[20]</a></sup> converts the complicated internal parameters of the neural network (i.e. the stack of dilated causal convolution) into categorical emissions, i.e. in our case choosing output samples (one-hot encoded):
+    The softmax layer<sup><a href="#ref">[21]</a></sup> converts the complicated internal parameters of the neural network (i.e. the stack of dilated causal convolution) into categorical emissions, i.e. in our case choosing output samples (one-hot encoded):
     <br>
     <img src="./softmax.png" width="400px"/>
     <h4>How does WaveNet update its parameters?</h4>
@@ -482,7 +482,7 @@ But training deep networks can be difficult because of the vanishing gradients p
     
     tf.summary.scalar('loss', reduced_loss)
     </pre>
-    The loss function is softmax_cross_entropy_with_logits<sup><a href="#ref">[21]</a></sup>, which
+    The loss function is softmax_cross_entropy_with_logits<sup><a href="#ref">[22]</a></sup>, which
     <blockquote>
 measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class)
     </blockquote>
@@ -635,7 +635,7 @@ measures the probability error in discrete classification tasks in which the cla
     <blockquote>
     At training time, the conditional predictions for all timesteps can be made in parallel because all timesteps of ground truth x are known.  When generating with the model, the predictions are sequential: after each sample is predicted, it is fed back into the network to predict the next sample
     </blockquote>
-    There is a <sup><a href="#ref">[22]</a></sup> fast WaveNet model for speeding up generation by caching intermediate computations.
+    There is a <sup><a href="#ref">[23]</a></sup> fast WaveNet model for speeding up generation by caching intermediate computations.
 
     <h1 id="ref">References</h1>
     <ol>
@@ -643,6 +643,7 @@ measures the probability error in discrete classification tasks in which the cla
       <li><a href="https://e2eml.school/convolution_one_d.html">Convolution in one dimension for neural networks</a></li>
       <li><a href="https://openreview.net/pdf?id=S1Ow_e-Rb">How do deep convolutional neural networks learn from raw audio waveforms? - OpenReview pdf</a></li>
       <li><a href="https://arxiv.org/abs/1311.2901">Visualizing and Understanding Convolutional Networks-  arXiv.org</a></li>
+      <li><a href="https://arxiv.org/pdf/1905.03554.pdf">1D Convolutional Neural Networks and Applications - A Survey - PDF, arXiv.org</a></li>
       <li><a href="https://developers.google.com/machine-learning/practica/image-classification/convolutional-neural-networks">ML Practicum: Image Classification - Machine Learning, Google Developers</a></li>
       <li><a href="https://towardsdatascience.com/applied-deep-learning-part-4-convolutional-neural-networks-584bc134c1e2">Applied Deep Learning - Part 4: Convolutional Neural Networks | by Arden Dertat | Towards Data Science</a></li>
       <li><a href="https://www.researchgate.net/publication/308831941_Very_Deep_Convolutional_Neural_Networks_for_Raw_Waveforms">(PDF) Very Deep Convolutional Neural Networks for Raw Waveforms - ResearchGate.net</a></li>
