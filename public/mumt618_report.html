@@ -17,8 +17,7 @@
 
     <p>
     Machine learning and deep learning techniques in recent years have an increasing presence in the field of musical acoustics<sup><a href="#ref">[1]</a></sup>. As a preliminary introduction to generating music using neural networks, you can view my <a href="paper_presentation_final.pdf" type="application/pdf" title="Neural audio synthesis">paper presentation</a> introducing WaveNet<sup><a href="#ref">[2]</a></sup>, SampleRNN<sup><a href="#ref">[3]</a></sup>, and other novel approaches to neural audio:
-    <object data="paper_presentation_final.pdf" title="Neural audio synthesis" width="800px" height="512px">
-        <a href="YourFile.pdf">shree</a> 
+    <object data="paper_presentation_final.pdf" title="Neural audio synthesis" width="700px" height="512px">
     </object>
     <br>
     <br>
@@ -71,13 +70,16 @@
 	    <li>Loss function and iterative training/optimization - how do WaveNet/SampleRNN know that one set of parameters is better than the other? What defines the "correct" output of a waveform?</li>
 	    <li>Generation - after training a model with low loss, how do WaveNet and SampleRNN use the trained model to generate brand new waveforms of audio?</li>
     </ol>
-    <a href="/wavenet_overview.html"><h3>WaveNet overview</h3></a>
-    <a href="/samplernn_overview.html"><h3>SampleRNN overview</h3></a>
-    <a href="/wavenet_derivatives.html"><h3>WaveNet and SampleRNN derivatives - Tacotron 2, Jukebox, Char2Wav</h3></a>
-    <a href="/hybrid.html"><h3>ML/DSP hybrids - Magenta DDSP, RNNoise</h3></a>
+    Individual deep dive sub-pages per model:
+    <ul>
+	    <li><a href="/wavenet_overview.html"><b>WaveNet overview</b></a></li>
+    	    <li><a href="/samplernn_overview.html"><b>SampleRNN overview</b></a></li>
+    	    <li><a href="/wavenet_derivatives.html"><b>WaveNet and SampleRNN derivatives - Tacotron 2, Jukebox, Char2Wav</b></a></li>
+    	    <li><a href="/hybrid.html"><b>ML/DSP hybrids - Magenta DDSP, RNNoise</b></a></li>
+    </ul>
 
-    <h1>Experiments</h1>
-    A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. I'll run experiments with 2-tier and 3-tier SampleRNN to verify whether I can get good results.
+    <h1>Training the models</h1>
+    A difficult step in any machine learning experiment is actually reproducing the claims of papers<sup><a href="#ref">[6]</a></sup>. I'll try to reproduce some of the claims of the described projects and models.
 
     <h2>Hardware and OS setup</h2>
 
@@ -95,21 +97,22 @@
 	    <li>The authors of SampleRNN used a K80<sup><a href="#ref">[9]</a></sup>, which 2 K40s on one die - this one is actually worse than my RTX 2070 SUPER, but there are 2 of them</li>
     </ul>
 
-    <h2>Experimental procedure</h2>
-    The experimental procedure I followed was following the default parameters and instructions for the 3 variants - WaveNet, prism/3-tier SampleRNN, dadabots/2-tier SampleRNN. The goal is to gain a minimum amount of experience in the real world usage of the models after doing a theoretical description/overview earlier.
-    <a href="./prism_samplernn.html"><h2>prism-samplernn experiments (3-tier)</h2></a>
+    <h2>Experiments</h2>
+    I used the default parameters and instructions for the 3 variants - WaveNet, prism/3-tier SampleRNN, dadabots/2-tier SampleRNN, and DDSP. My goal was to gain a minimum amount of experience in the real world usage of the models after doing a theoretical description/overview earlier.
+    <br>
+    <br>
+    Experiment sub-pages per model:
+    <ul>
+	    <li><a href="./prism_samplernn.html"><b>prism-samplernn experiments (3-tier)</b></a></li>
+    	    <li><a href="./dadabots_samplernn.html"><b>dadabots_sampleRNN experiments (2-tier)</b></a></li>
+    	    <li><a href="./samplernn_bridging_the_gap.html"><b>Bridging the gap between SampleRNN implementations</b></a></li>
+    	    <li><a href="./wavenet_experiments.html"><b>WaveNet experiments</b></a></li>
+    	    <li><a href="./ddsp_experiments.html"><b>DDSP experiments - clarinet synthesis</b></a></li>
+    	    <li><a href="./album_art.html"><b>Album art generation with StyleGAN2</b></a></li>
+    </ul>
 
-    <a href="./dadabots_samplernn.html"><h2>dadabots_sampleRNN experiments (2-tier)</h2></a>
-
-    <a href="./samplernn_bridging_the_gap.html"><h2>Bridging the gap between SampleRNN implementations</h2></a></h2></a>
-
-    <a href="./wavenet_experiments.html"><h2>WaveNet experiments</h2></a>
-
-    <a href="./ddsp_experiments.html"><h2>DDSP experiments - clarinet synthesis</h2></a>
-
-    <a href="./curation.html"><h1>Curating neural generated results</h1></a>
-
-    <a href="./album_art.html"><h1>Album art generation</h1></a>
+    <h1>Curating neural results</h1>
+    After generating disjoint clips with varying amounts of musical content with the above neural network models, these need to be curated to form larger "songs" - I do this with an automated <a href="./curation.html">curation script</a>.
 
     <h1>Results & conclusion</h1>
 
