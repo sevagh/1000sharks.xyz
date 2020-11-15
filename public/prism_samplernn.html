@@ -371,47 +371,6 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
         ├── model.ckpt-248.index
         └── train
     </pre>
-
-    <h1>Repeating experiment 0 with 2-tier architecture</h1>
-    I repeated Experiment 0, training on a single album (Animals as Leaders' self-titled album), but after modifying the prism-samplernn code to support the 2-tier architecture (which as discussed in the overview is purported to produce better music).
-    <br>
-    <br>
-    The parameter `frame_sizes = [16,64]` determines the additional 2 tiers, frame and big frame (in addition to the base sample tier) - in 2-tier SampleRNN, there is no big frame. I modified my fork of prism-samplernn to accept `frame_size = [16]` as a configuration for 2-tier. The code changes can be viewed <a href="https://github.com/rncm-prism/prism-samplernn/compare/master...sevagh:master">here</a>. The exact steps of experiment 0 were repeated.
-    <br>
-    <br>
-    Train and generate:
-    <pre>
-    $ python train.py --id aamgen-2t --data_dir ./chunks/ --num_epochs 100 --batch_size 64 --checkpoint_every 5 --output_file_dur 3 --sample_rate 16000 --resume=True
-    Epoch: 98/100, Step: 735/750, Loss: 3.078, Accuracy: 21.368, (0.391 sec/step)
-    Epoch: 98/100, Step: 736/750, Loss: 3.077, Accuracy: 21.386, (0.391 sec/step)
-    Epoch: 98/100, Step: 737/750, Loss: 3.076, Accuracy: 21.406, (0.385 sec/step)
-    Epoch: 98/100, Step: 738/750, Loss: 3.075, Accuracy: 21.428, (0.394 sec/step)
-    Epoch: 98/100, Step: 739/750, Loss: 3.074, Accuracy: 21.451, (0.388 sec/step)
-    Epoch: 98/100, Step: 740/750, Loss: 3.073, Accuracy: 21.475, (0.390 sec/step)
-    Epoch: 98/100, Step: 741/750, Loss: 3.072, Accuracy: 21.501, (0.400 sec/step)
-    Epoch: 98/100, Step: 742/750, Loss: 3.071, Accuracy: 21.529, (0.389 sec/step)
-    Epoch: 98/100, Step: 743/750, Loss: 3.069, Accuracy: 21.559, (0.394 sec/step)
-    Epoch: 98/100, Step: 744/750, Loss: 3.068, Accuracy: 21.590, (0.388 sec/step)
-    Epoch: 98/100, Step: 745/750, Loss: 3.066, Accuracy: 21.623, (0.386 sec/step)
-    Epoch: 98/100, Step: 746/750, Loss: 3.065, Accuracy: 21.656, (0.396 sec/step)
-    Epoch: 98/100, Step: 747/750, Loss: 3.063, Accuracy: 21.691, (0.389 sec/step)
-    Epoch: 98/100, Step: 748/750, Loss: 3.062, Accuracy: 21.726, (0.388 sec/step)
-    Epoch: 98/100, Step: 749/750, Loss: 3.060, Accuracy: 21.764, (0.392 sec/step)
-    $
-    $ python generate.py --output_path ./aamgen-2t.wav --checkpoint_path ./logdir/aamgen-2t/31.10.2020_17.33.41/model.ckpt-95 --config_file ./default.config.json --num_seqs 20 --dur 20 --sample_rate 16000
-    </pre>
-    Generated clips:<br>
-    <audio controls>
-	    <source src="aamgen_2t_0.wav" type="audio/wav"</source>
-    </audio>
-    <br>
-    <audio controls>
-	    <source src="aamgen_2t_1.wav" type="audio/wav"</source>
-    </audio>
-    <br>
-    <br>
-    The resultant clips exhibit the same strange high-pitched whistling and erratic drum beats - no significant improvement. Although the code "works" (in that it doesn't crash and actually successfully trains and generates anything at all), I can't really say whether it "works" in the neural perspective, i.e. converges to a correct solution.
-
     <h1 id="ref">References</h1>
     <ol>
       <li><a href="https://www.rncm.ac.uk/research/research-centres-rncm/prism/prism-blog/a-short-history-of-neural-synthesis/">A Short History of Neural Synthesis - Royal Northern College of Music</a></li>
