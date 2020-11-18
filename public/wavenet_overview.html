@@ -213,7 +213,6 @@ the conditional probability distribution is modelled by a stack of convolutional
      0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
      0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
     </pre>
-    The purpose of one-hot encoding is to transform a number (in this case, the mu-law encoded value, which is by design clamped to a range of 256) into a categorical distribution - a value of 131 is <code>0*0 + 0*1 + 0*2 + ... + 1*131 + 0*132 + ...</code>. Using the categorical distribution, the input waveforms are transformed into a form that can be used in a probabilistic model.
     <h3>Training layers - stack of dilated convolutions</h3>
     After the input data has been encoded in this form, the WaveNet model then feeds it in batches into its k layers of stacked dilated causal convolutions. That's where the "meat" of the model is. It gets complicated here so I'll try to intersperse explanations from different sources.
     <br>
@@ -642,7 +641,7 @@ measures the probability error in discrete classification tasks in which the cla
       <li><a href="https://arxiv.org/abs/1609.03499">WaveNet: A Generative Model for Raw Audio - arXiv.org</a></li>
       <li><a href="https://e2eml.school/convolution_one_d.html">Convolution in one dimension for neural networks</a></li>
       <li><a href="https://openreview.net/pdf?id=S1Ow_e-Rb">How do deep convolutional neural networks learn from raw audio waveforms? - OpenReview pdf</a></li>
-      <li><a href="https://arxiv.org/abs/1311.2901">Visualizing and Understanding Convolutional Networks-  arXiv.org</a></li>
+      <li><a href="https://arxiv.org/abs/1311.2901">Visualizing and Understanding Convolutional Networks - arXiv.org</a></li>
       <li><a href="https://arxiv.org/pdf/1905.03554.pdf">1D Convolutional Neural Networks and Applications - A Survey - PDF, arXiv.org</a></li>
       <li><a href="https://developers.google.com/machine-learning/practica/image-classification/convolutional-neural-networks">ML Practicum: Image Classification - Machine Learning, Google Developers</a></li>
       <li><a href="https://towardsdatascience.com/applied-deep-learning-part-4-convolutional-neural-networks-584bc134c1e2">Applied Deep Learning - Part 4: Convolutional Neural Networks | by Arden Dertat | Towards Data Science</a></li>

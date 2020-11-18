@@ -42,7 +42,7 @@
     </blockquote>
     The spectrograms are then used as conditioning inputs to a WaveNet which mostly resembles the vanilla WaveNet we already saw, with some modifications to the stacked layers of dilated convolutions.
     <h3>Code</h3>
-    There is an implementation of Tacotron 2 published by NVIDIA<sup><a href="#ref">[2]</a></sup>, which uses their own WaveGlow<sup><a href="#ref">[3]</a></sup> (instead of WaveNet) as the vocoder. This indicates to me that the vocoder layer can be swapped out for any other waveform-generative model, e.g. SampleRNN, as long as its trained appropriately on mel spectrograms.
+    There is an implementation of Tacotron 2 published by NVIDIA<sup><a href="#ref">[2]</a></sup>, which uses their own WaveGlow<sup><a href="#ref">[3]</a></sup> (instead of WaveNet) as the vocoder. This indicates to me that the vocoder layer can be swapped out for any other waveform-generative model, e.g. SampleRNN, as long as its conditioned appropriately with input mel spectrograms.
     <br>
     <br>
     If we follow the link to NVIDIA's website announcing WaveGlow<sup><a href="#ref">[4]</a></sup>, we can find the <a href="https://github.com/r9y9/wavenet_vocoder">wavenet_vocoder</a> project, which is WaveNet conditioned on mel spectrograms, i.e. the vocoder part of Tacotron 2.
@@ -341,7 +341,7 @@
     </blockquote>
 
     <h2>Jukebox</h2>
-    Jukebox<sup><a href="#ref">[12]</a></sup> solves a different problem of the waveform domain - that of the high dimensionality:
+    Jukebox<sup><a href="#ref">[12]</a></sup> (<a href="https://github.com/openai/jukebox/">reference implementation</a>) solves a different problem of the waveform domain - that of the high dimensionality:
     <blockquote>
     The key bottleneck is that modeling the raw audio directly introduces extremely long-range dependencies, making it computationally challenging to learn the high-level semantics of music. A way to reduce the difficulty is to learn a lower-dimensional encoding of the audio with the goal of losing the less important information but retaining most of the musical information.
     </blockquote>
@@ -363,14 +363,24 @@
     <br>
     <img src="jukebox.png" width=800px/>
     <br>
-    This is very reminsicent of SampleRNN's 3 tiers of RNN operating at different temporal resolutions.
+    This is reminsicent of SampleRNN's 3 tiers of RNN operating at different temporal resolutions.
+    <br>
+    <br>
+    Of special mention is the fact that Jukebox is requires a lot of computational power to train:
+    <blockquote>
+    The VQ-VAE has 2 million parameters and is trained on 9-second audio clips on 256 V100 for 3 days.
+    <br>
+    <br>
+    The upsamplers have one billion parameters and are trained on 128 V100s for 2 weeks, and the top-level prior has 5 billion parameters and is trained on 512 V100s for 4 weeks.
+    <br>
+    <br>
+    For lyrics conditioning, we reuse the prior and add a small encoder, after which we train the model on 512 V100s for 2 weeks.
+    </blockquote>
     <h3>Reconstruction</h3>
     Just like we saw the inverse spectral transform of Tacotron 1 suffering from low quality from the Griffin-Lim phase reconstruction phase, Jukebox suffers from its own reconstruction problems:
     <blockquote>
     When using only the sample-level reconstruction loss, the model learns to reconstruct low frequencies only. To capture mid-to-high frequencies, we add a spectral loss which ... encourages the model to match the spectral components without paying attention to phase which is more difficult to learn.
     </blockquote>
-    <h3>Code</h3>
-    The reference code is <a href="https://github.com/openai/jukebox/">here</a> but the dadabots have began <a href="https://github.com/ZVK/jukebox">experimenting with it</a> in their own fork - they probably have some interesting new ideas in the pipeline.
 
     <h1 id="ref">References</h1>
     <ol>
