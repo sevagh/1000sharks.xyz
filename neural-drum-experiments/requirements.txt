@@ -1,0 +1,10 @@
+essentia
+scipy
+numpy
+h5py
+librosa
+soundfile
+sklearn
+keras
+tensorflow>=2.2
+pandas
