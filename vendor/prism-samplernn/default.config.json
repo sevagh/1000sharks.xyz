@@ -1,0 +1,10 @@
+{
+    "seq_len": 1024,
+    "frame_sizes": [16],
+    "dim": 1024,
+    "rnn_type": "lstm",
+    "num_rnn_layers": 5,
+    "q_type": "mu-law",
+    "q_levels": 256,
+    "emb_size": 256
+}

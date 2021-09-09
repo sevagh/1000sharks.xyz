@@ -18,18 +18,17 @@ $ tree -L 1
 ├── README.md             # this readme describing the project breakdown
 ├── samplernn-scripts     # scripts for reproducing SampleRNN results
 ├── samplernn-scripts     # scripts for reproducing SampleRNN results
-└── stylegan2-scripts     # scripts for reproducing StyleGAN2 results
+├── stylegan2-scripts     # scripts for reproducing StyleGAN2 results
+└── vendor                # vendored copies of third-party repos
 ```
 
 ### ML models
 
 The machine learning models used are:
-* https://github.com/sevagh/dadabots_sampleRNN for music generation
-* https://github.com/sevagh/prism-samplernn for (less successful) music generation
-* https://github.com/sevagh/tensorflow-wavenet (for wavenet deep dive)
-* https://github.com/sevagh/stylegan2 for album art generation
-* https://github.com/sevagh/ddsp for Differentiable DSP and clarinet synthesis
+* https://github.com/Cortexelus/dadabots_sampleRNN for music generation
+* https://github.com/rncm-prism/prism-samplernn for (less successful) music generation
+* https://github.com/ibab/tensorflow-wavenet (for wavenet deep dive)
+* https://github.com/NVlabs/stylegan2 for album art generation
+* https://github.com/magenta/ddsp for Differentiable DSP and clarinet synthesis
 
-N.b. that the links above are all my own forks of the original models, but I have only made some very minor quality-of-life commits (and no other significant modifications from the forks).
-
-The reason I forked them all is to ensure they stick around for future reference from this repo.
+I vendored all of the above locally to ensure they stick around for future reference from the 1000sharks project. I also made some minor quality-of-life changes in the vendored copies.
