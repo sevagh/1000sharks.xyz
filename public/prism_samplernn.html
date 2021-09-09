@@ -22,7 +22,7 @@
 
     <h2>Python setup + minor code tweaks</h2>
 
-    I forked the original prism-samplernn<sup><a href="#ref">[2]</a></sup> codebase to my own GitHub profile to make a minor adjustment in the scripts<sup><a href="#ref">[3]</a></sup>.
+    I vendored the original prism-samplernn<sup><a href="#ref">[2]</a></sup> codebase in the 1000sharks project to make a minor adjustment in the scripts<sup><a href="#ref">[3]</a></sup>.
     <pre>
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
@@ -375,7 +375,7 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     <ol>
       <li><a href="https://www.rncm.ac.uk/research/research-centres-rncm/prism/prism-blog/a-short-history-of-neural-synthesis/">A Short History of Neural Synthesis - Royal Northern College of Music</a></li>
       <li><a href="https://github.com/rncm-prism/prism-samplernn">rncm-prism/prism-samplernn - GitHub</a></li>
-      <li><a href="https://github.com/sevagh/prism-samplernn">rncm-prism/prism-samplernn - my fork on GitHub</a></li>
+      <li><a href="https://gitlab.com/sevagh/1000sharks.xyz/-/tree/master/vendor/prism-samplernn">vendor/prism-samplernn - 1000sharks</a></li>
       <li><a href="https://docs.conda.io/en/latest/">Conda - Conda Documentation</a></li>
       <li><a href="https://karlhiner.com/music_generation/wavenet_and_samplernn/">Karl Hiner - Generating Music with WaveNet and SampleRNN</a></li>
     </ol>

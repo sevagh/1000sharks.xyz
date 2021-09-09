@@ -16,7 +16,7 @@
     Let's run some experiments with the same WaveNet implementation that I dissected in the overview. I didn't need to make any tweaks or modifications: I was able to use the same conda environment I used for StyleGAN2 in the <a href="./album_art.html">album art generation</a> page, since both models depend on Tensorflow 1.
     <br>
     <br>
-    The original is <a href="https://github.com/ibab/tensorflow-wavenet">is here</a> (the same as in the overview/dissection), and my fork <a href="https://github.com/sevagh/tensorflow-wavenet">is here</a>. I also had to export the same environment variable to support my RTX 2070 Super, <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code>.
+    The original is <a href="https://github.com/ibab/tensorflow-wavenet">is here</a> (the same as in the overview/dissection), and my vendored copy <a href="https://gitlab.com/sevagh/1000sharks.xyz/-/tree/master/vendor/tensorflow-wavenet">is here</a>. I also had to export the same environment variable to support my RTX 2070 Super, <code>export TF_FORCE_GPU_ALLOW_GROWTH="true"</code>.
 
     <h2>Training data preparation</h2>
 
