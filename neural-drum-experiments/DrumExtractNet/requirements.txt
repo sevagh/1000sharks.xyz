@@ -1,0 +1,7 @@
+torch==1.4.0
+pytorch_lightning==0.7.3
+numpy==1.18.1
+scipy==1.4.1
+hickle==4.0.3
+librosa==0.8.0
+essentia==2.1b6.dev234

@@ -1,0 +1,10 @@
+dtcwt
+tf-nightly-gpu==2.5.0.dev20201224
+numpy
+scipy
+h5py
+sklearn
+essentia
+soundfile
+matplotlib
+PyWavelets
