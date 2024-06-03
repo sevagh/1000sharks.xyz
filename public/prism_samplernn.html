@@ -118,12 +118,12 @@
     <br>
     Epoch 20:<br>
     <audio controls>
-	    <source src="aamgen_epoch_20.wav" type="audio/wav"</source>
+	    <source src="aamgen_epoch_20.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     Epoch 85:<br>
     <audio controls>
-	    <source src="aamgen_epoch_85.wav" type="audio/wav"</source>
+	    <source src="aamgen_epoch_85.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     <br>
@@ -134,7 +134,7 @@
     This says to use the model checkpoint 90. Even though we specified 100 epochs in the training, the model has an intelligent stop when it sees that additional training is not improving the model. In this case, it seems like 90 epochs exhausted the model's learning ability. Here's one of them (both sound equally bad):
     <br>
     <audio controls>
-	    <source src="aamgen_0.wav" type="audio/wav"</source>
+	    <source src="aamgen_0.ogg" type="audio/ogg"</source>
     </audio>
 
     <h2>Experiment 0 lessons</h2>
@@ -234,7 +234,7 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     Here's a 30-second clip output from the training on Periphery only:
     <br>
     <audio controls>
-	    <source src="periphery_only_0.wav" type="audio/wav"</source>
+	    <source src="periphery_only_0.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     <br>
@@ -248,13 +248,13 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     Epoch 67:
     <br>
     <audio controls>
-	    <source src="periphery_only_epoch_67.wav" type="audio/wav"</source>
+	    <source src="periphery_only_epoch_67.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     Epoch 70:
     <br>
     <audio controls>
-	    <source src="periphery_only_epoch_70.wav" type="audio/wav"</source>
+	    <source src="periphery_only_epoch_70.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     <h4>Overfitting to a single song, Make Total Destroy</h4>
@@ -276,13 +276,13 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     Clip 1:
     <br>
     <audio controls>
-	    <source src="maketotaldestroy_1.wav" type="audio/wav"</source>
+	    <source src="maketotaldestroy_1.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     Clip 2:
     <br>
     <audio controls>
-	    <source src="maketotaldestroy_2.wav" type="audio/wav"</source>
+	    <source src="maketotaldestroy_2.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     These don't sound anything like music.
@@ -306,13 +306,13 @@ $ python train.py --id periphery_only --data_dir ./experiment-1/periphery-chunks
     Periphery epoch 83, mu-law quantization:
     <br>
     <audio controls>
-	    <source src="periphery_epoch_83_mulaw.wav" type="audio/wav"</source>
+	    <source src="periphery_epoch_83_mulaw.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     Periphery epoch 83, linear quantization <b>WARNING! LOUD!</b>:
     <br>
     <audio controls>
-	    <source src="periphery_epoch_83_linear.wav" type="audio/wav"</source>
+	    <source src="periphery_epoch_83_linear.ogg" type="audio/ogg"</source>
     </audio>
     <br>
     In my subjective listening test, the linear quantization output is very loud, almost to the point of distortion and clipping. The mu-law quantization is outputting music with more subtle volume, possibly since its more suited for the logarithmic human experience of loudness.
